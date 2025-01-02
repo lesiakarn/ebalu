@@ -13,7 +13,7 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # Параметри підключення до PostgreSQL
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:WRzOlUWnceycOewJnJOPBHHcKloNoyBQ@roundhouse.proxy.rlwy.net:21272/railway')
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway')
 
 # Підключення до PostgreSQL
 async def connect_to_db():
