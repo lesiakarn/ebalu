@@ -1,4 +1,5 @@
 import asyncio
+import os
 import asyncpg
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
@@ -7,94 +8,68 @@ from aiogram.filters import Command
 # Токен вашого бота
 API_TOKEN = "5207732731:AAFXqa0bgsYyHXQnNt5MrrQVZA0kO1APt4I"
 
-# Налаштування бази даних
-DB_HOST = "localhost"
-DB_USER = "your_user"
-DB_PASSWORD = "your_password"
-DB_NAME = "your_database"
-
 # Ініціалізація бота і диспетчера
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# Пул підключень до бази даних
-db_pool = None
+# Функція для підключення до PostgreSQL
+async def connect_to_db():
+    db_url = os.getenv('DATABASE_URL', 'postgresql://postgres:WRzOlUWnceycOewJnJOPBHHcKloNoyBQ@roundhouse.proxy.rlwy.net:21272/railway')
+    conn = await asyncpg.connect(db_url)
+    return conn
 
-
+# Ініціалізація бази даних
 async def init_db():
-    """Ініціалізація підключення до бази даних."""
-    global db_pool
-    db_pool = await asyncpg.create_pool(
-        host=DB_HOST, user=DB_USER, password=DB_PASSWORD, database=DB_NAME
-    )
-    await create_tables()
-
-
-async def create_tables():
-    """Створення необхідних таблиць."""
-    async with db_pool.acquire() as conn:
-        await conn.execute("""
+    conn = await connect_to_db()
+    await conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             user_id BIGINT UNIQUE NOT NULL,
-            username TEXT NOT NULL,
+            username TEXT,
             points INT DEFAULT 0
         );
+    """)
+    await conn.execute("""
         CREATE TABLE IF NOT EXISTS admins (
             id SERIAL PRIMARY KEY,
             user_id BIGINT UNIQUE NOT NULL
         );
-        """)
+    """)
+    await conn.close()
 
+# Додаємо користувача
+async def add_user(user_id, username):
+    conn = await connect_to_db()
+    await conn.execute("""
+        INSERT INTO users (user_id, username) VALUES ($1, $2)
+        ON CONFLICT (user_id) DO NOTHING;
+    """, user_id, username)
+    await conn.close()
 
-async def is_admin(user_id):
-    """Перевірка, чи є користувач адміністратором."""
-    async with db_pool.acquire() as conn:
-        result = await conn.fetchval("SELECT EXISTS(SELECT 1 FROM admins WHERE user_id = $1)", user_id)
-        return result
-
-
+# Додаємо адміністратора
 async def add_admin(user_id):
-    """Додавання адміністратора."""
-    async with db_pool.acquire() as conn:
-        await conn.execute("INSERT INTO admins (user_id) VALUES ($1) ON CONFLICT DO NOTHING", user_id)
+    conn = await connect_to_db()
+    await conn.execute("""
+        INSERT INTO admins (user_id) VALUES ($1)
+        ON CONFLICT (user_id) DO NOTHING;
+    """, user_id)
+    await conn.close()
 
-
-async def remove_admin(user_id):
-    """Видалення адміністратора."""
-    async with db_pool.acquire() as conn:
-        await conn.execute("DELETE FROM admins WHERE user_id = $1", user_id)
-
-
-async def register_user(user_id, username):
-    """Реєстрація нового користувача."""
-    async with db_pool.acquire() as conn:
-        await conn.execute("""
-        INSERT INTO users (user_id, username) 
-        VALUES ($1, $2) 
-        ON CONFLICT (user_id) DO NOTHING
-        """, user_id, username)
-
-
-async def update_points(user_id, points):
-    """Оновлення балів користувача."""
-    async with db_pool.acquire() as conn:
-        await conn.execute("UPDATE users SET points = points + $1 WHERE user_id = $2", points, user_id)
-
-
-async def get_user_points(user_id):
-    """Отримання балів користувача."""
-    async with db_pool.acquire() as conn:
-        return await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
-
-
-async def get_admins():
-    """Отримання списку адміністраторів."""
-    async with db_pool.acquire() as conn:
-        return await conn.fetch("SELECT user_id FROM admins")
-
+# Перевірка, чи є користувач адміністратором
+async def is_admin(user_id):
+    conn = await connect_to_db()
+    result = await conn.fetchval("""
+        SELECT EXISTS(SELECT 1 FROM admins WHERE user_id = $1);
+    """, user_id)
+    await conn.close()
+    return result
 
 # Команди
+@dp.message(Command("start"))
+async def start_command(message: Message):
+    await add_user(message.from_user.id, message.from_user.username)
+    await message.answer("👋 Привіт! Ви зареєстровані в системі.")
+
 @dp.message(Command("ad"))
 async def add_admin_command(message: Message):
     if not await is_admin(message.from_user.id):
@@ -103,80 +78,43 @@ async def add_admin_command(message: Message):
 
     args = message.text.split()
     if len(args) != 2:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /ad @username")
+        await message.answer("⚠️ Використовуйте: /ad @username")
         return
 
-    username = args[1].lstrip('@')
-    async with db_pool.acquire() as conn:
-        user_id = await conn.fetchval("SELECT user_id FROM users WHERE username = $1", username)
+    username = args[1].lstrip("@")
+    conn = await connect_to_db()
+    user_id = await conn.fetchval("""
+        SELECT user_id FROM users WHERE username = $1;
+    """, username)
+    await conn.close()
 
     if not user_id:
         await message.answer(f"👤 Користувача @{username} не знайдено.")
         return
 
     await add_admin(user_id)
-    await message.answer(f"✅ Користувач @{username} доданий до списку адміністраторів.")
+    await message.answer(f"✅ @{username} доданий до адміністраторів.")
 
+@dp.message(Command("admins"))
+async def list_admins(message: Message):
+    conn = await connect_to_db()
+    rows = await conn.fetch("""
+        SELECT username FROM users
+        WHERE user_id IN (SELECT user_id FROM admins);
+    """)
+    await conn.close()
 
-@dp.message(Command("un"))
-async def remove_admin_command(message: Message):
-    if not await is_admin(message.from_user.id):
-        await message.answer("❌ У вас немає прав для цієї команди.")
+    if not rows:
+        await message.answer("👑 Список адміністраторів порожній.")
         return
 
-    args = message.text.split()
-    if len(args) != 2:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /un @username")
-        return
-
-    username = args[1].lstrip('@')
-    async with db_pool.acquire() as conn:
-        user_id = await conn.fetchval("SELECT user_id FROM users WHERE username = $1", username)
-
-    if not user_id:
-        await message.answer(f"👤 Користувача @{username} не знайдено.")
-        return
-
-    await remove_admin(user_id)
-    await message.answer(f"❌ Користувач @{username} видалений зі списку адміністраторів.")
-
-
-@dp.message(Command("rating"))
-async def show_rating(message: Message):
-    async with db_pool.acquire() as conn:
-        users = await conn.fetch("SELECT username, points FROM users ORDER BY points DESC")
-
-    if not users:
-        await message.answer("📉 Рейтинг порожній.")
-        return
-
-    rating = "\n".join([f"@{user['username']}: {user['points']} балів" for user in users])
-    await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
-
-
-@dp.message(Command("balance"))
-async def show_balance(message: Message):
-    points = await get_user_points(message.from_user.id)
-    if points is None:
-        await message.answer("⚠️ Ви ще не зареєстровані в системі.")
-        return
-
-    await message.answer(f"💰 Ваш баланс: {points} балів.")
-
-
-@dp.message()
-async def auto_register_user(message: Message):
-    user_id = message.from_user.id
-    username = message.from_user.username
-    if username:
-        await register_user(user_id, username)
-
+    admin_list = "\n".join(f"@{row['username']}" for row in rows)
+    await message.answer(f"👑 Список адміністраторів:\n{admin_list}")
 
 async def main():
-    print("Бот запущено...")
+    print("Запуск бота...")
     await init_db()
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
