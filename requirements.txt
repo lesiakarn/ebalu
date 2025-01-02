@@ -1,4 +1,4 @@
 aiogram==2.23
 requests==2.26
-asyncio
+asyncio==3.3
 json
