@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 # Завантаження змінних оточення
 load_dotenv()
 
-API_TOKEN = os.getenv("5207732731:AAFXqa0bgsYyHXQnNt5MrrQVZA0kO1APt4I")
-DATABASE_URL = os.getenv("postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway")
+API_TOKEN = "5207732731:AAFXqa0bgsYyHXQnNt5MrrQVZA0kO1APt4I"
+DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
 
 # Ініціалізація бота і диспетчера
 bot = Bot(token=API_TOKEN)
