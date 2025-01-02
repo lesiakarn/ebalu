@@ -2,4 +2,3 @@ aiogram
 asyncio
 psycopg2
 asyncpg
-dotenv
