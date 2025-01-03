@@ -198,6 +198,56 @@ async def handle_take_points(message: Message):
     await message.answer(f"❌ Знято {points} балів у @{username}.")
     await bot.send_message(user_id, f"⚠️ У вас знято {points} балів.")
 
+@dp.message(Command("balance"))
+async def show_balance(message: Message):
+    args = message.text.split()
+
+    async with pool.acquire() as conn:
+        if len(args) == 1:  # Перегляд власного балансу
+            user_id = message.from_user.id
+
+            # Отримуємо інформацію про користувача з бази даних
+            user = await conn.fetchrow(
+                "SELECT username, points FROM users WHERE user_id = $1",
+                user_id
+            )
+
+            if not user:
+                await message.answer(
+                    "⚠️ Ви ще не зареєстровані в системі. Надішліть будь-яке повідомлення, щоб зареєструватися."
+                )
+                return
+
+            username = user['username']
+            points = user['points']
+
+            await message.answer(
+                f"💰 Ваш баланс: {points} балів.\nКористувач: @{username}."
+            )
+
+        elif len(args) == 2:  # Перегляд балансу іншого користувача
+            username = args[1].lstrip('@')
+
+            # Отримуємо інформацію про користувача за username
+            user = await conn.fetchrow(
+                "SELECT points FROM users WHERE username = $1",
+                username
+            )
+
+            if not user:
+                await message.answer(f"👤 Користувача @{username} не знайдено.")
+                return
+
+            points = user['points']
+            await message.answer(
+                f"💰 Баланс користувача @{username}: {points} балів."
+            )
+
+        else:
+            await message.answer(
+                "⚠️ Невірний формат команди. Використовуйте:\n- /balance (щоб побачити свій баланс)\n- /balance @username (щоб побачити баланс іншого користувача)"
+            )
+
 @dp.message()
 async def auto_register_user(message: Message):
     user_id = message.from_user.id
