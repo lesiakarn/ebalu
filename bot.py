@@ -18,13 +18,24 @@ buy_button = KeyboardButton(text="🛒 Купити")
 elder_button = KeyboardButton(text="🛡 Старійшина")
 reinforcement_button = KeyboardButton(text="⚔️ Підкріплення")
 
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
 # Головна клавіатура
-main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-main_keyboard.add(buy_button).add(commands_button, balance_button)
+main_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🛒 Купити")],
+        [KeyboardButton(text="📜 Команди"), KeyboardButton(text="💰 Баланс")],
+    ],
+    resize_keyboard=True,
+)
 
 # Клавіатура для "Купити"
-buy_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-buy_keyboard.add(elder_button, reinforcement_button)
+buy_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🛡 Старійшина"), KeyboardButton(text="⚔️ Підкріплення")],
+    ],
+    resize_keyboard=True,
+)
 
 
 @dp.message(Command("start"))
