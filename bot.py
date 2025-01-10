@@ -18,40 +18,6 @@ commands_button = KeyboardButton(text="📜 Команди")
 balance_button = KeyboardButton(text="💰 Баланс")
 buy_button = KeyboardButton(text="🛒 Купити")
 
-# Оновлення клавіатури для меню "Купити"
-buy_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="🛡 Старійшина"), KeyboardButton(text="⚔️ Підкріплення")],
-        [KeyboardButton(text="🔙 Назад")],
-    ],
-    resize_keyboard=True,
-)
-
-# Оновлений хендлер для меню "Купити"
-@dp.message(lambda message: message.text == "🛒 Купити")
-async def handle_buy_menu(message: types.Message):
-    await message.answer(
-        "🛍 Оберіть, що ви хочете придбати:",
-        reply_markup=buy_keyboard,
-    )
-
-# Хендлер для кнопки "Назад"
-@dp.message(lambda message: message.text == "🔙 Назад")
-async def handle_back_button(message: types.Message):
-    await message.answer(
-        "🔙 Ви повернулися до головного меню:",
-        reply_markup=main_keyboard,
-    )
-
-# Хендлер для кнопки "Назад"
-@dp.message(lambda message: message.text == "🔙 Назад")
-async def handle_back_button(message: types.Message):
-    await message.answer(
-        "🔙 Ви повернулися до головного меню:",
-        reply_markup=main_keyboard,
-    )
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-
 # Головна клавіатура
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -65,6 +31,7 @@ main_keyboard = ReplyKeyboardMarkup(
 buy_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🛡 Старійшина"), KeyboardButton(text="⚔️ Підкріплення")],
+        [KeyboardButton(text="🔙 Назад")],  # Додаємо кнопку "Назад"
     ],
     resize_keyboard=True,
 )
@@ -102,13 +69,18 @@ async def handle_balance_button(message: types.Message):
     else:
         await message.answer(f"💰 Ваш баланс: {points} балів.")
 
-
-@dp.message(lambda message: message.text == "🛒 Купити")
-async def handle_buy_menu(message: types.Message):
-    await message.answer(
-        "🛍 Оберіть, що ви хочете придбати:",
-        reply_markup=buy_keyboard,
-    )
+@dp.message(lambda message: message.text in ["🛒 Купити", "🔙 Назад"])
+async def handle_buy_menu_or_back(message: types.Message):
+    if message.text == "🛒 Купити":
+        await message.answer(
+            "🛍 Оберіть, що ви хочете придбати:",
+            reply_markup=buy_keyboard,  # Меню з кнопкою "Назад"
+        )
+    elif message.text == "🔙 Назад":
+        await message.answer(
+            "🔙 Ви повернулися до головного меню:",
+            reply_markup=main_keyboard,  # Повертаємо головну клавіатуру
+        )
 
 
 @dp.message(lambda message: message.text in ["🛡 Старійшина", "⚔️ Підкріплення"])
