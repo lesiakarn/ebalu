@@ -9,19 +9,14 @@ API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y"
 
 # URL підключення до PostgreSQL
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
-
-# Ініціалізація бота і диспетчера
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
-
 # Створення кнопок
-commands_button = KeyboardButton("📜 Команди")
-balance_button = KeyboardButton("💰 Баланс")
-buy_button = KeyboardButton("🛒 Купити")
+commands_button = KeyboardButton(text="📜 Команди")
+balance_button = KeyboardButton(text="💰 Баланс")
+buy_button = KeyboardButton(text="🛒 Купити")
 
 # Створення кнопок для "Купити"
-elder_button = KeyboardButton("🛡 Старійшина")
-reinforcement_button = KeyboardButton("⚔️ Підкріплення")
+elder_button = KeyboardButton(text="🛡 Старійшина")
+reinforcement_button = KeyboardButton(text="⚔️ Підкріплення")
 
 # Головна клавіатура
 main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -31,23 +26,76 @@ main_keyboard.add(buy_button).add(commands_button, balance_button)
 buy_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 buy_keyboard.add(elder_button, reinforcement_button)
 
+
 @dp.message(Command("start"))
-async def handle_start(message: Message):
+async def handle_start(message: types.Message):
     await message.answer(
         "👋 Вітаємо у боті! Оберіть дію з меню нижче:",
-        reply_markup=main_keyboard
+        reply_markup=main_keyboard,
     )
 
+
 @dp.message(lambda message: message.text == "📜 Команди")
-async def handle_commands_menu(message: Message):
+async def handle_commands_menu(message: types.Message):
     await message.answer(
         "🛠 Ось список доступних команд:\n"
         "/balance - Перевірити баланс\n"
         "/rating - Переглянути рейтинг\n"
         "/give - Додати бали користувачеві (адміністраторам)\n"
         "/take - Зняти бали у користувача (адміністраторам)",
-        reply_markup=main_keyboard
+        reply_markup=main_keyboard,
     )
+
+
+@dp.message(lambda message: message.text == "💰 Баланс")
+async def handle_balance_button(message: types.Message):
+    user_id = message.from_user.id
+    conn = await asyncpg.connect(DATABASE_URL)
+    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
+    await conn.close()
+
+    if points is None:
+        await message.answer("⚠️ Ваш обліковий запис не зареєстровано в системі.")
+    else:
+        await message.answer(f"💰 Ваш баланс: {points} балів.")
+
+
+@dp.message(lambda message: message.text == "🛒 Купити")
+async def handle_buy_menu(message: types.Message):
+    await message.answer(
+        "🛍 Оберіть, що ви хочете придбати:",
+        reply_markup=buy_keyboard,
+    )
+
+
+@dp.message(lambda message: message.text in ["🛡 Старійшина", "⚔️ Підкріплення"])
+async def handle_buy_item(message: types.Message):
+    item = "Старійшина" if message.text == "🛡 Старійшина" else "Підкріплення"
+    cost = 10 if item == "Старійшина" else 5
+    user_id = message.from_user.id
+    username = message.from_user.username
+
+    conn = await asyncpg.connect(DATABASE_URL)
+    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
+
+    if points is None or points < cost:
+        await message.answer(
+            f"❌ Недостатньо балів для покупки '{item}'. Необхідно: {cost} балів."
+        )
+    else:
+        # Списати бали
+        await conn.execute(
+            "UPDATE users SET points = points - $1 WHERE user_id = $2", cost, user_id
+        )
+        # Відправка повідомлення адміністраторам
+        admin_ids = await get_admins()
+        for admin_id in admin_ids:
+            await bot.send_message(admin_id, f"@{username} купив '{item}'.")
+
+        await message.answer(
+            f"✅ Ви успішно придбали '{item}'.", reply_markup=main_keyboard
+        )
+
 
 @dp.message(lambda message: message.text == "💰 Баланс")
 async def handle_balance_button(message: Message):
