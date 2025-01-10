@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 import asyncpg
 
@@ -15,11 +15,11 @@ bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
 # Створення кнопок
-commands_button = KeyboardButton("📜 Команди")
-balance_button = KeyboardButton("💰 Баланс")
-buy_button = KeyboardButton("🛒 Купити")
-elder_button = KeyboardButton("🛡 Старійшина")
-reinforcement_button = KeyboardButton("⚔️ Підкріплення")
+commands_button = KeyboardButton(text="📜 Команди")
+balance_button = KeyboardButton(text="💰 Баланс")
+buy_button = KeyboardButton(text="🛒 Купити")
+elder_button = KeyboardButton(text="🛡 Старійшина")
+reinforcement_button = KeyboardButton(text="⚔️ Підкріплення")
 
 # Головна клавіатура
 main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
