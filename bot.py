@@ -22,12 +22,21 @@ elder_button = KeyboardButton(text="🛡 Старійшина")
 reinforcement_button = KeyboardButton(text="⚔️ Підкріплення")
 
 # Головна клавіатура
-main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-main_keyboard.add(commands_button, balance_button, buy_button)
+main_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [commands_button, balance_button],  # Ряд із двома кнопками
+        [buy_button]  # Окремий ряд із кнопкою "Купити"
+    ],
+    resize_keyboard=True
+)
 
 # Клавіатура для "Купити"
-buy_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-buy_keyboard.add(elder_button, reinforcement_button)
+buy_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [elder_button, reinforcement_button]  # Ряд із двома кнопками
+    ],
+    resize_keyboard=True
+)
 
 # Підключення до бази даних
 async def init_db():
