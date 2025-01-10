@@ -174,7 +174,6 @@ async def handle_give_points(message: Message):
 
     await update_points(user_id, points)
     await message.answer(f"✅ Додано {points} балів для @{username}.")
-    await bot.send_message(user_id, f"🎉 Вам додано {points} балів.")
 
 @dp.message(Command("take"))
 async def handle_take_points(message: Message):
