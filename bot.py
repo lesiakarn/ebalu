@@ -1,11 +1,11 @@
 import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Bot, Dispatcher
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 import asyncpg
 
 # Токен вашого бота
-API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y-"
+API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y"
 
 # URL підключення до PostgreSQL
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
@@ -13,6 +13,21 @@ DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.p
 # Ініціалізація бота і диспетчера
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
+
+# Створення кнопок
+commands_button = KeyboardButton("📜 Команди")
+balance_button = KeyboardButton("💰 Баланс")
+buy_button = KeyboardButton("🛒 Купити")
+elder_button = KeyboardButton("🛡 Старійшина")
+reinforcement_button = KeyboardButton("⚔️ Підкріплення")
+
+# Головна клавіатура
+main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+main_keyboard.add(commands_button, balance_button, buy_button)
+
+# Клавіатура для "Купити"
+buy_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+buy_keyboard.add(elder_button, reinforcement_button)
 
 # Підключення до бази даних
 async def init_db():
@@ -56,60 +71,95 @@ async def get_user_id_by_username(username):
     await conn.close()
     return user_id
 
+async def add_admin(user_id):
+    conn = await asyncpg.connect(DATABASE_URL)
+    await conn.execute("INSERT INTO administrators (user_id) VALUES ($1) ON CONFLICT DO NOTHING", user_id)
+    await conn.close()
+
+async def remove_admin(user_id):
+    conn = await asyncpg.connect(DATABASE_URL)
+    await conn.execute("DELETE FROM administrators WHERE user_id = $1", user_id)
+    await conn.close()
+
+async def get_admins():
+    conn = await asyncpg.connect(DATABASE_URL)
+    rows = await conn.fetch("SELECT user_id FROM administrators")
+    await conn.close()
+    return [row["user_id"] for row in rows]
+
 async def update_points(user_id, points):
     conn = await asyncpg.connect(DATABASE_URL)
     await conn.execute("UPDATE users SET points = points + $1 WHERE user_id = $2", points, user_id)
     await conn.close()
 
-async def get_user_points(user_id):
+async def get_users():
+    conn = await asyncpg.connect(DATABASE_URL)
+    rows = await conn.fetch("SELECT username, points FROM users ORDER BY points DESC")
+    await conn.close()
+    return rows
+
+# Хендлери
+@dp.message(Command("start"))
+async def handle_start(message: Message):
+    await message.answer(
+        "👋 Вітаємо у боті! Оберіть дію з меню нижче:",
+        reply_markup=main_keyboard
+    )
+
+@dp.message(lambda message: message.text == "📜 Команди")
+async def handle_commands_menu(message: Message):
+    await message.answer(
+        "🛠 Ось список доступних команд:\n"
+        "/balance - Перевірити баланс\n"
+        "/rating - Переглянути рейтинг\n"
+        "/give - Додати бали користувачеві (адміністраторам)\n"
+        "/take - Зняти бали у користувача (адміністраторам)",
+        reply_markup=main_keyboard
+    )
+
+@dp.message(lambda message: message.text == "💰 Баланс")
+async def handle_balance_button(message: Message):
+    user_id = message.from_user.id
     conn = await asyncpg.connect(DATABASE_URL)
     points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
     await conn.close()
-    return points
 
-async def notify_admins(message):
-    conn = await asyncpg.connect(DATABASE_URL)
-    admin_ids = await conn.fetch("SELECT user_id FROM administrators")
-    await conn.close()
+    if points is None:
+        await message.answer("⚠️ Ваш обліковий запис не зареєстровано в системі.")
+    else:
+        await message.answer(f"💰 Ваш баланс: {points} балів.")
 
-    for admin in admin_ids:
-        await bot.send_message(admin["user_id"], message)
-
-# Основні команди
-@dp.message(Command("commands"))
-async def handle_commands(message: types.Message):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="\ud83d\udd16 Команди", callback_data="commands")],
-        [InlineKeyboardButton(text="\ud83d\udcb3 Баланс", callback_data="balance")],
-        [InlineKeyboardButton(text="\ud83c\udf10 \u041a\u0443\u043f\u0438\u0442\u0438", callback_data="buy")]
-    ])
-    await message.answer("\u041e\u0431\u0435\u0440\u0456\u0442\u044c дію", reply_markup=keyboard)
-
-@dp.callback_query(lambda callback: callback.data == "commands")
-async def show_commands(callback_query: types.CallbackQuery):
-    await callback_query.message.edit_text(
-        "\u0421\u043f\u0438\u0441\u043e\u043a \u043a\u043e\u043c\u0430\u043d\u0434:\n"
-        "\u2022 /balance - \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0438 \u0431\u0430\u043b\u0430\u043d\u0441\n"
-        "\u2022 /rating - \u0440\u0435\u0439\u0442\u0438\u043d\u0433 \u043a\u043e\u0440\u0438\u0441\u0442\u0443\u0432\u0430\u0447\u0456\u0432"
+@dp.message(lambda message: message.text == "🛒 Купити")
+async def handle_buy_menu(message: Message):
+    await message.answer(
+        "🛍 Оберіть, що ви хочете придбати:",
+        reply_markup=buy_keyboard
     )
 
-@dp.callback_query(lambda callback: callback.data == "balance")
-async def show_balance(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    points = await get_user_points(user_id)
-    await callback_query.message.edit_text(f"\ud83d\udcb3 \u0412\u0430\u0448 \u0431\u0430\u043b\u0430\u043d\u0441: {points} \u0431\u0430\u043b\u0456\u0432")
+@dp.message(lambda message: message.text in ["🛡 Старійшина", "⚔️ Підкріплення"])
+async def handle_buy_item(message: Message):
+    item = "Старійшина" if message.text == "🛡 Старійшина" else "Підкріплення"
+    username = message.from_user.username
 
-@dp.callback_query(lambda callback: callback.data == "buy")
-async def buy_menu(callback_query: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="\ud83c\udf1f \u0421\u0442\u0430\u0440\u0456\u0439\u0448\u0438\u043d\u0430", callback_data="buy_elder")],
-        [InlineKeyboardButton(text="\ud83c\udfc6 \u041f\u0456\u0434\u043a\u0440\u0456\u043f\u043b\u0435\u043d\u043d\u044f", callback_data="buy_support")]
-    ])
-    await callback_query.message.edit_text("\u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043f\u0440\u0435\u0434\u043c\u0435\u0442 \u0434\u043b\u044f \u043a\u0443\u043f\u0456\u0432\u043b\u0456:", reply_markup=keyboard)
+    # Відправка повідомлення адміністраторам
+    admin_ids = await get_admins()
+    for admin_id in admin_ids:
+        await bot.send_message(admin_id, f"@{username} купив \"{item}\".")
 
-@dp.callback_query(lambda callback: callback.data.startswith("buy_"))
-async def handle_buy(callback_query: types.CallbackQuery):
-    item = "\u0421\u0442\u0430\u0440\u0456\u0439\u0448\u0438\u043d\u0430" if callback_query.data == "buy_elder" else "\u041f\u0456\u0434\u043a\u0440\u0456\u043f\u043b\u0435\u043d\u043d\u044f"
+    await message.answer(f"✅ Ви успішно придбали \"{item}\".", reply_markup=main_keyboard)
 
-    user_id = callback_query.from_user.id
-    username = callback
+@dp.message()
+async def auto_register_user(message: Message):
+    user_id = message.from_user.id
+    username = message.from_user.username
+
+    if username and not await is_user_in_group(user_id):
+        await register_user(user_id, username)
+
+async def main():
+    print("Бот запущено...")
+    await init_db()
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
