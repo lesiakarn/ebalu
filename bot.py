@@ -1,6 +1,6 @@
 import asyncio
-from aiogram import Bot, Dispatcher
-from aiogram.types import Message
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 import asyncpg
 
@@ -56,191 +56,60 @@ async def get_user_id_by_username(username):
     await conn.close()
     return user_id
 
-async def add_admin(user_id):
-    conn = await asyncpg.connect(DATABASE_URL)
-    await conn.execute("INSERT INTO administrators (user_id) VALUES ($1) ON CONFLICT DO NOTHING", user_id)
-    await conn.close()
-
-async def remove_admin(user_id):
-    conn = await asyncpg.connect(DATABASE_URL)
-    await conn.execute("DELETE FROM administrators WHERE user_id = $1", user_id)
-    await conn.close()
-
-async def get_admins():
-    conn = await asyncpg.connect(DATABASE_URL)
-    rows = await conn.fetch("SELECT user_id FROM administrators")
-    await conn.close()
-    return [row["user_id"] for row in rows]
-
 async def update_points(user_id, points):
     conn = await asyncpg.connect(DATABASE_URL)
     await conn.execute("UPDATE users SET points = points + $1 WHERE user_id = $2", points, user_id)
     await conn.close()
 
-async def get_users():
+async def get_user_points(user_id):
     conn = await asyncpg.connect(DATABASE_URL)
-    rows = await conn.fetch("SELECT username, points FROM users ORDER BY points DESC")
+    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
     await conn.close()
-    return rows
+    return points
 
-# Команди бота
-@dp.message(Command("ad"))
-async def handle_add_admin(message: Message):
-    if not await is_admin(message.from_user.id):
-        await message.answer("❌ У вас немає прав для цієї команди.")
-        return
+async def notify_admins(message):
+    conn = await asyncpg.connect(DATABASE_URL)
+    admin_ids = await conn.fetch("SELECT user_id FROM administrators")
+    await conn.close()
 
-    args = message.text.split()
-    if len(args) != 2:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /ad @username")
-        return
+    for admin in admin_ids:
+        await bot.send_message(admin["user_id"], message)
 
-    username = args[1].lstrip('@')
-    user_id = await get_user_id_by_username(username)
+# Основні команди
+@dp.message(Command("commands"))
+async def handle_commands(message: types.Message):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="\ud83d\udd16 Команди", callback_data="commands")],
+        [InlineKeyboardButton(text="\ud83d\udcb3 Баланс", callback_data="balance")],
+        [InlineKeyboardButton(text="\ud83c\udf10 \u041a\u0443\u043f\u0438\u0442\u0438", callback_data="buy")]
+    ])
+    await message.answer("\u041e\u0431\u0435\u0440\u0456\u0442\u044c дію", reply_markup=keyboard)
 
-    if not user_id:
-        await message.answer(f"👤 Користувача @{username} не знайдено.")
-        return
+@dp.callback_query(lambda callback: callback.data == "commands")
+async def show_commands(callback_query: types.CallbackQuery):
+    await callback_query.message.edit_text(
+        "\u0421\u043f\u0438\u0441\u043e\u043a \u043a\u043e\u043c\u0430\u043d\u0434:\n"
+        "\u2022 /balance - \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0438 \u0431\u0430\u043b\u0430\u043d\u0441\n"
+        "\u2022 /rating - \u0440\u0435\u0439\u0442\u0438\u043d\u0433 \u043a\u043e\u0440\u0438\u0441\u0442\u0443\u0432\u0430\u0447\u0456\u0432"
+    )
 
-    await add_admin(user_id)
-    await message.answer(f"✅ Користувач @{username} доданий до списку адміністраторів.")
+@dp.callback_query(lambda callback: callback.data == "balance")
+async def show_balance(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    points = await get_user_points(user_id)
+    await callback_query.message.edit_text(f"\ud83d\udcb3 \u0412\u0430\u0448 \u0431\u0430\u043b\u0430\u043d\u0441: {points} \u0431\u0430\u043b\u0456\u0432")
 
-@dp.message(Command("un"))
-async def handle_remove_admin(message: Message):
-    if not await is_admin(message.from_user.id):
-        await message.answer("❌ У вас немає прав для цієї команди.")
-        return
+@dp.callback_query(lambda callback: callback.data == "buy")
+async def buy_menu(callback_query: types.CallbackQuery):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="\ud83c\udf1f \u0421\u0442\u0430\u0440\u0456\u0439\u0448\u0438\u043d\u0430", callback_data="buy_elder")],
+        [InlineKeyboardButton(text="\ud83c\udfc6 \u041f\u0456\u0434\u043a\u0440\u0456\u043f\u043b\u0435\u043d\u043d\u044f", callback_data="buy_support")]
+    ])
+    await callback_query.message.edit_text("\u041e\u0431\u0435\u0440\u0456\u0442\u044c \u043f\u0440\u0435\u0434\u043c\u0435\u0442 \u0434\u043b\u044f \u043a\u0443\u043f\u0456\u0432\u043b\u0456:", reply_markup=keyboard)
 
-    args = message.text.split()
-    if len(args) != 2:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /un @username")
-        return
+@dp.callback_query(lambda callback: callback.data.startswith("buy_"))
+async def handle_buy(callback_query: types.CallbackQuery):
+    item = "\u0421\u0442\u0430\u0440\u0456\u0439\u0448\u0438\u043d\u0430" if callback_query.data == "buy_elder" else "\u041f\u0456\u0434\u043a\u0440\u0456\u043f\u043b\u0435\u043d\u043d\u044f"
 
-    username = args[1].lstrip('@')
-    user_id = await get_user_id_by_username(username)
-
-    if not user_id:
-        await message.answer(f"👤 Користувача @{username} не знайдено.")
-        return
-
-    await remove_admin(user_id)
-    await message.answer(f"❌ Користувач @{username} видалений зі списку адміністраторів.")
-
-@dp.message(Command("admins"))
-async def handle_list_admins(message: Message):
-    admin_ids = await get_admins()
-    if not admin_ids:
-        await message.answer("📜 Список адміністраторів порожній.")
-        return
-
-    admin_usernames = []
-    for admin_id in admin_ids:
-        conn = await asyncpg.connect(DATABASE_URL)
-        username = await conn.fetchval("SELECT username FROM users WHERE user_id = $1", admin_id)
-        await conn.close()
-        if username:
-            admin_usernames.append(f"@{username}")
-
-    admin_list = "\n".join(admin_usernames)
-    await message.answer(f"👑 Список адміністраторів:\n{admin_list}")
-
-@dp.message(Command("rating"))
-async def handle_show_rating(message: Message):
-    users = await get_users()
-    if not users:
-        await message.answer("📉 Рейтинг порожній.")
-        return
-
-    rating = "\n".join([f"@{row['username']}: {row['points']} балів" for row in users])
-    await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
-
-@dp.message(Command("give"))
-async def handle_give_points(message: Message):
-    if not await is_admin(message.from_user.id):
-        await message.answer("❌ У вас немає прав для цієї команди.")
-        return
-
-    args = message.text.split()
-    if len(args) != 3:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /give @username <кількість>")
-        return
-
-    username, points = args[1].lstrip('@'), int(args[2])
-    user_id = await get_user_id_by_username(username)
-
-    if not user_id:
-        await message.answer(f"👤 Користувача @{username} не знайдено.")
-        return
-
-    await update_points(user_id, points)
-    await message.answer(f"✅ Додано {points} балів для @{username}.")
-
-@dp.message(Command("take"))
-async def handle_take_points(message: Message):
-    if not await is_admin(message.from_user.id):
-        await message.answer("❌ У вас немає прав для цієї команди.")
-        return
-
-    args = message.text.split()
-    if len(args) != 3:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /take @username <кількість>")
-        return
-
-    username, points = args[1].lstrip('@'), int(args[2])
-    user_id = await get_user_id_by_username(username)
-
-    if not user_id:
-        await message.answer(f"👤 Користувача @{username} не знайдено.")
-        return
-
-    await update_points(user_id, -points)
-    await message.answer(f"❌ Знято {points} балів у @{username}.")
-    await bot.send_message(user_id, f"⚠️ У вас знято {points} балів.")
-
-@dp.message(Command("balance"))
-async def handle_balance(message: Message):
-    args = message.text.split()
-
-    if len(args) == 1:
-        # Перевірка балансу поточного користувача
-        user_id = message.from_user.id
-        conn = await asyncpg.connect(DATABASE_URL)
-        points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
-        await conn.close()
-
-        if points is None:
-            await message.answer("⚠️ Ваш обліковий запис не зареєстровано в системі.")
-        else:
-            await message.answer(f"💰 Ваш баланс: {points} балів.")
-
-    elif len(args) == 2:
-        # Перевірка балансу іншого користувача
-        username = args[1].lstrip('@')
-        conn = await asyncpg.connect(DATABASE_URL)
-        row = await conn.fetchrow("SELECT points FROM users WHERE username = $1", username)
-        await conn.close()
-
-        if row is None:
-            await message.answer(f"👤 Користувача @{username} не знайдено.")
-        else:
-            points = row["points"]
-            await message.answer(f"💰 Баланс @{username}: {points} балів.")
-
-    else:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /balance або /balance @username")
-
-@dp.message()
-async def auto_register_user(message: Message):
-    user_id = message.from_user.id
-    username = message.from_user.username
-
-    if username and not await is_user_in_group(user_id):
-        await register_user(user_id, username)
-
-async def main():
-    print("Бот запущено...")
-    await init_db()
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    user_id = callback_query.from_user.id
+    username = callback
