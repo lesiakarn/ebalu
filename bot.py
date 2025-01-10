@@ -5,7 +5,7 @@ from aiogram.filters import Command
 import asyncpg
 
 # Токен вашого бота
-API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y"
+API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y-"
 
 # URL підключення до PostgreSQL
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
