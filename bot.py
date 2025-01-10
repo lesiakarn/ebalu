@@ -18,10 +18,25 @@ commands_button = KeyboardButton(text="📜 Команди")
 balance_button = KeyboardButton(text="💰 Баланс")
 buy_button = KeyboardButton(text="🛒 Купити")
 
-# Створення кнопок для "Купити"
-elder_button = KeyboardButton(text="🛡 Старійшина")
-reinforcement_button = KeyboardButton(text="⚔️ Підкріплення")
+# Додати кнопку "Назад"
+back_button = KeyboardButton(text="🔙 Назад")
 
+# Клавіатура для "Купити" з кнопкою "Назад"
+buy_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🛡 Старійшина"), KeyboardButton(text="⚔️ Підкріплення")],
+        [back_button],
+    ],
+    resize_keyboard=True,
+)
+
+# Хендлер для кнопки "Назад"
+@dp.message(lambda message: message.text == "🔙 Назад")
+async def handle_back_button(message: types.Message):
+    await message.answer(
+        "🔙 Ви повернулися до головного меню:",
+        reply_markup=main_keyboard,
+    )
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # Головна клавіатура
