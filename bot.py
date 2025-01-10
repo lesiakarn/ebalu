@@ -275,8 +275,6 @@ async def handle_buy_item(message: Message):
 
     await message.answer(f"✅ Ви успішно придбали \"{item}\".", reply_markup=main_keyboard)
 
-        await register_user(user_id, username)
-
 # Команди бота
 @dp.message(Command("ad"))
 async def handle_add_admin(message: Message):
