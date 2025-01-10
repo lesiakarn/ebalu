@@ -18,17 +18,30 @@ commands_button = KeyboardButton(text="📜 Команди")
 balance_button = KeyboardButton(text="💰 Баланс")
 buy_button = KeyboardButton(text="🛒 Купити")
 
-# Додати кнопку "Назад"
-back_button = KeyboardButton(text="🔙 Назад")
-
-# Клавіатура для "Купити" з кнопкою "Назад"
+# Оновлення клавіатури для меню "Купити"
 buy_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🛡 Старійшина"), KeyboardButton(text="⚔️ Підкріплення")],
-        [back_button],
+        [KeyboardButton(text="🔙 Назад")],
     ],
     resize_keyboard=True,
 )
+
+# Оновлений хендлер для меню "Купити"
+@dp.message(lambda message: message.text == "🛒 Купити")
+async def handle_buy_menu(message: types.Message):
+    await message.answer(
+        "🛍 Оберіть, що ви хочете придбати:",
+        reply_markup=buy_keyboard,
+    )
+
+# Хендлер для кнопки "Назад"
+@dp.message(lambda message: message.text == "🔙 Назад")
+async def handle_back_button(message: types.Message):
+    await message.answer(
+        "🔙 Ви повернулися до головного меню:",
+        reply_markup=main_keyboard,
+    )
 
 # Хендлер для кнопки "Назад"
 @dp.message(lambda message: message.text == "🔙 Назад")
