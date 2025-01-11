@@ -7,6 +7,7 @@ import asyncpg
 
 # Токен вашого бота
 API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y"
+ADMIN_ID = "1360055963"
 
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)
