@@ -366,8 +366,13 @@ async def handle_give_points(message: Message):
         return
 
     username, points = args[1].lstrip('@'), int(args[2])
+
+    if points < 0:
+        await message.answer("🚫 Ви не можете додавати від'ємні бали!")
+        return
+
     if points > MAX_POINTS:
-        await message.answer(f"⚠️ Неможливо додати більше ніж {MAX_POINTS} балів за один раз.")
+        await message.answer(f"⚠️ Неможливо додати більше ніж {MAX_POINTS} балів.")
         return
 
     user_id = await get_user_id_by_username(username)
@@ -379,8 +384,8 @@ async def handle_give_points(message: Message):
     # Отримуємо поточний баланс користувача
     current_balance = await get_user_balance(user_id)
 
-    # Додаємо бали, не даючи балансу перевищувати MAX_BALANCE
-    new_balance = min(MAX_BALANCE, current_balance + points)
+    # Додаємо бали до балансу
+    new_balance = min(current_balance + points, MAX_BALANCE)
 
     # Оновлюємо баланс користувача в базі даних
     user_balances[user_id] = new_balance
@@ -390,7 +395,7 @@ async def handle_give_points(message: Message):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     await bot.send_message(
         ADMIN_ID, 
-        f"Адміністратор @{admin_username} додав {points} балів користувачу @{username}.\n"
+        f"Адміністратор @{admin_username} додав {points} балів у користувача @{username}.\n"
         f"Новий баланс: {new_balance}.\n"
         f"Дія виконана: {current_time}."
     )
@@ -411,7 +416,7 @@ async def handle_take_points(message: Message):
 
     username, points = args[1].lstrip('@'), int(args[2])
     if points > MAX_POINTS:
-        await message.answer(f"⚠️ Неможливо відняти більше ніж {MAX_POINTS} балів за один раз.")
+        await message.answer(f"⚠️ Неможливо відняти більше ніж {MAX_POINTS} балів.")
         return
 
     user_id = await get_user_id_by_username(username)
