@@ -358,6 +358,10 @@ user_balances = {}  # Це простий приклад, в реальному 
 async def get_user_balance(user_id: int) -> int:
     return user_balances.get(user_id, 0)  # Повертаємо 0, якщо користувача немає в словнику
 
+MAX_POINTS = 1000  # Максимальна кількість балів, які можна додати чи зняти за один раз
+MAX_BALANCE = 1000  # Максимальний баланс користувача
+MIN_BALANCE = 0     # Мінімальний баланс користувача
+
 @dp.message(Command("give"))
 async def handle_give_points(message: Message):
     if not await is_admin(message.from_user.id):
@@ -370,6 +374,10 @@ async def handle_give_points(message: Message):
         return
 
     username, points = args[1].lstrip('@'), int(args[2])
+    if points > MAX_POINTS:
+        await message.answer(f"⚠️ Неможливо додати більше ніж {MAX_POINTS} балів за один раз.")
+        return
+
     user_id = await get_user_id_by_username(username)
 
     if not user_id:
@@ -379,13 +387,11 @@ async def handle_give_points(message: Message):
     # Отримуємо поточний баланс користувача
     current_balance = await get_user_balance(user_id)
 
-    # Обчислюємо новий баланс, враховуючи ліміт
-    new_balance = current_balance + points
-    if new_balance > MAX_BALANCE:
-        new_balance = MAX_BALANCE
+    # Додаємо бали, не даючи балансу перевищувати MAX_BALANCE
+    new_balance = min(MAX_BALANCE, current_balance + points)
 
-    # Оновлюємо баланс користувача
-    user_balances[user_id] = new_balance  # Це спрощений приклад
+    # Оновлюємо баланс користувача в базі даних
+    user_balances[user_id] = new_balance
 
     # Повідомлення адміністратору
     admin_username = message.from_user.username
@@ -393,12 +399,13 @@ async def handle_give_points(message: Message):
     await bot.send_message(
         ADMIN_ID, 
         f"Адміністратор @{admin_username} додав {points} балів користувачу @{username}.\n"
+        f"Новий баланс: {new_balance}.\n"
         f"Дія виконана: {current_time}."
     )
-    
+
     # Повідомлення користувачу
-    await message.answer(f"✅ Додано {points} балів для @{username}. Новий баланс: {new_balance} балів.")
-    await bot.send_message(user_id, f"🎉 Вам додано {points} балів. Ваш новий баланс: {new_balance} балів.")
+    await message.answer(f"✅ Додано {points} балів користувачу @{username}. Новий баланс: {new_balance} балів.")
+    await bot.send_message(user_id, f"✅ Вам додано {points} балів. Ваш новий баланс: {new_balance} балів.")
 
 @dp.message(Command("take"))
 async def handle_take_points(message: Message):
@@ -412,6 +419,10 @@ async def handle_take_points(message: Message):
         return
 
     username, points = args[1].lstrip('@'), int(args[2])
+    if points > MAX_POINTS:
+        await message.answer(f"⚠️ Неможливо зняти більше ніж {MAX_POINTS} балів за один раз.")
+        return
+
     user_id = await get_user_id_by_username(username)
 
     if not user_id:
@@ -421,13 +432,11 @@ async def handle_take_points(message: Message):
     # Отримуємо поточний баланс користувача
     current_balance = await get_user_balance(user_id)
 
-    # Якщо баланс користувача менший за відніману суму, віднімаємо тільки доступну суму
-    if current_balance < points:
-        points = current_balance  # Віднімаємо весь доступний баланс
+    # Знімаємо бали, не даючи балансу йти в мінус
+    new_balance = max(MIN_BALANCE, current_balance - points)
 
-    # Оновлюємо баланс користувача, щоб він не став меншим за 0
-    new_balance = max(0, current_balance - points)
-    user_balances[user_id] = new_balance  # Оновлюємо баланс у словнику або базі даних
+    # Оновлюємо баланс користувача в базі даних
+    user_balances[user_id] = new_balance
 
     # Повідомлення адміністратору
     admin_username = message.from_user.username
@@ -435,6 +444,7 @@ async def handle_take_points(message: Message):
     await bot.send_message(
         ADMIN_ID, 
         f"Адміністратор @{admin_username} зняв {points} балів з користувача @{username}.\n"
+        f"Новий баланс: {new_balance}.\n"
         f"Дія виконана: {current_time}."
     )
 
