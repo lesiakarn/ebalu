@@ -8,6 +8,7 @@ import asyncpg
 # Токен вашого бота
 API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y"
 ADMIN_ID = "1360055963"
+MAX_BALANCE = 1000
 
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)
@@ -372,7 +373,15 @@ async def handle_give_points(message: Message):
         await message.answer(f"👤 Користувача @{username} не знайдено.")
         return
 
-    # Додаємо бали користувачу
+    # Отримуємо поточний баланс користувача
+    current_balance = await get_user_balance(user_id)
+
+    # Обчислюємо новий баланс, враховуючи ліміт
+    new_balance = current_balance + points
+    if new_balance > MAX_BALANCE:
+        new_balance = MAX_BALANCE
+
+    # Оновлюємо баланс користувача
     await update_points(user_id, points)
     
     # Отримуємо ім'я адміністратора
@@ -410,8 +419,17 @@ async def handle_take_points(message: Message):
         await message.answer(f"👤 Користувача @{username} не знайдено.")
         return
 
+    # Отримуємо поточний баланс користувача
+    current_balance = await get_user_balance(user_id)
+
+    # Якщо баланс менший за кількість балів для зняття, віднімаємо лише доступну суму
+    if current_balance < points:
+        points_to_deduct = current_balance
+    else:
+        points_to_deduct = points
+
     # Знімаємо бали у користувача
-    await update_points(user_id, -points)
+    await update_points(user_id, -points_to_deduct)
     
     # Отримуємо ім'я адміністратора
     admin_username = message.from_user.username
