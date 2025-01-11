@@ -73,7 +73,9 @@ async def handle_balance_button(message: types.Message):
 async def handle_buy_menu_or_back(message: types.Message):
     if message.text == "🛒 Купити":
         await message.answer(
-            "🛍 Оберіть, що ви хочете придбати:",
+            "🛍 Оберіть, що ви хочете придбати:/n"
+            "🛡 Старійшина - 10 балів/n"
+            "⚔️ Підкріплення - 5 балів",
             reply_markup=buy_keyboard,  # Меню з кнопкою "Назад"
         )
     elif message.text == "🔙 Назад":
