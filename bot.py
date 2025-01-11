@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 from datetime import datetime
+from datetime import datetime
 import asyncpg
 
 # Токен вашого бота
@@ -351,9 +352,11 @@ async def handle_show_rating(message: Message):
     rating = "\n".join([f"@{row['username']}: {row['points']} балів" for row in users])
     await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
 
+# Приклад реалізації функції для отримання балансу
+user_balances = {}  # Це простий приклад, в реальному коді замініть на доступ до бази даних
 
-
-from datetime import datetime
+async def get_user_balance(user_id: int) -> int:
+    return user_balances.get(user_id, 0)  # Повертаємо 0, якщо користувача немає в словнику
 
 @dp.message(Command("give"))
 async def handle_give_points(message: Message):
@@ -382,15 +385,11 @@ async def handle_give_points(message: Message):
         new_balance = MAX_BALANCE
 
     # Оновлюємо баланс користувача
-    await update_points(user_id, points)
-    
-    # Отримуємо ім'я адміністратора
+    user_balances[user_id] = new_balance  # Це спрощений приклад
+
+    # Повідомлення адміністратору
     admin_username = message.from_user.username
-    
-    # Формуємо дату і час
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Повідомлення адміністратору з деталями
     await bot.send_message(
         ADMIN_ID, 
         f"Адміністратор @{admin_username} додав {points} балів користувачу @{username}.\n"
@@ -398,8 +397,8 @@ async def handle_give_points(message: Message):
     )
     
     # Повідомлення користувачу
-    await message.answer(f"✅ Додано {points} балів для @{username}.")
-    await bot.send_message(user_id, f"🎉 Вам додано {points} балів.")
+    await message.answer(f"✅ Додано {points} балів для @{username}. Новий баланс: {new_balance} балів.")
+    await bot.send_message(user_id, f"🎉 Вам додано {points} балів. Ваш новий баланс: {new_balance} балів.")
 
 @dp.message(Command("take"))
 async def handle_take_points(message: Message):
@@ -422,31 +421,26 @@ async def handle_take_points(message: Message):
     # Отримуємо поточний баланс користувача
     current_balance = await get_user_balance(user_id)
 
-    # Якщо баланс менший за кількість балів для зняття, віднімаємо лише доступну суму
+    # Якщо баланс користувача менший за відніману суму, віднімаємо тільки доступну суму
     if current_balance < points:
-        points_to_deduct = current_balance
-    else:
-        points_to_deduct = points
+        points = current_balance  # Віднімаємо весь доступний баланс
 
-    # Знімаємо бали у користувача
-    await update_points(user_id, -points_to_deduct)
-    
-    # Отримуємо ім'я адміністратора
+    # Оновлюємо баланс користувача, щоб він не став меншим за 0
+    new_balance = max(0, current_balance - points)
+    user_balances[user_id] = new_balance  # Оновлюємо баланс у словнику або базі даних
+
+    # Повідомлення адміністратору
     admin_username = message.from_user.username
-    
-    # Формуємо дату і час
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Повідомлення адміністратору з деталями
     await bot.send_message(
         ADMIN_ID, 
-        f"Адміністратор @{admin_username} зняв {points} балів у користувача @{username}.\n"
+        f"Адміністратор @{admin_username} зняв {points} балів з користувача @{username}.\n"
         f"Дія виконана: {current_time}."
     )
-    
+
     # Повідомлення користувачу
-    await message.answer(f"❌ Знято {points} балів у @{username}.")
-    await bot.send_message(user_id, f"⚠️ У вас знято {points} балів.")
+    await message.answer(f"✅ Знято {points} балів з користувача @{username}. Новий баланс: {new_balance} балів.")
+    await bot.send_message(user_id, f"❌ У вас знято {points} балів. Ваш новий баланс: {new_balance} балів.")
 
 @dp.message()
 async def auto_register_user(message: Message):
