@@ -352,13 +352,7 @@ async def handle_show_rating(message: Message):
     rating = "\n".join([f"@{row['username']}: {row['points']} балів" for row in users])
     await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
 
-# Приклад реалізації функції для отримання балансу
-user_balances = {}  # Це простий приклад, в реальному коді замініть на доступ до бази даних
-
-async def get_user_balance(user_id: int) -> int:
-    return user_balances.get(user_id, 0)  # Повертаємо 0, якщо користувача немає в словнику
-
-MAX_POINTS = 1000  # Максимальна кількість балів, які можна додати чи зняти за один раз
+# MAX_POINTS = 1000  # Максимальна кількість балів, які можна додати чи зняти за один раз
 MAX_BALANCE = 1000  # Максимальний баланс користувача
 MIN_BALANCE = 0     # Мінімальний баланс користувача
 
@@ -375,7 +369,7 @@ async def handle_give_points(message: Message):
 
     username, points = args[1].lstrip('@'), int(args[2])
     if points > MAX_POINTS:
-        await message.answer(f"⚠️ Неможливо додати більше ніж {MAX_POINTS} балів за один раз.")
+        await message.answer(f"⚠️ Неможливо додати більше ніж {MAX_POINTS} балів.")
         return
 
     user_id = await get_user_id_by_username(username)
@@ -420,7 +414,7 @@ async def handle_take_points(message: Message):
 
     username, points = args[1].lstrip('@'), int(args[2])
     if points > MAX_POINTS:
-        await message.answer(f"⚠️ Неможливо зняти більше ніж {MAX_POINTS} балів за один раз.")
+        await message.answer(f"⚠️ Неможливо зняти більше ніж {MAX_POINTS} балів.")
         return
 
     user_id = await get_user_id_by_username(username)
@@ -436,7 +430,10 @@ async def handle_take_points(message: Message):
     new_balance = max(MIN_BALANCE, current_balance - points)
 
     # Оновлюємо баланс користувача в базі даних
+if new_balance >= 0:
     user_balances[user_id] = new_balance
+else:
+    user_balances[user_id] = 0
 
     # Повідомлення адміністратору
     admin_username = message.from_user.username
@@ -450,7 +447,6 @@ async def handle_take_points(message: Message):
 
     # Повідомлення користувачу
     await message.answer(f"✅ Знято {points} балів з користувача @{username}. Новий баланс: {new_balance} балів.")
-    await bot.send_message(user_id, f"❌ У вас знято {points} балів. Ваш новий баланс: {new_balance} балів.")
 
 @dp.message()
 async def auto_register_user(message: Message):
