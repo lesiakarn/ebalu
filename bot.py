@@ -2,6 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
+from datetime import datetime
 import asyncpg
 
 # Токен вашого бота
@@ -348,6 +349,10 @@ async def handle_show_rating(message: Message):
     rating = "\n".join([f"@{row['username']}: {row['points']} балів" for row in users])
     await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
 
+
+
+from datetime import datetime
+
 @dp.message(Command("give"))
 async def handle_give_points(message: Message):
     if not await is_admin(message.from_user.id):
@@ -366,7 +371,23 @@ async def handle_give_points(message: Message):
         await message.answer(f"👤 Користувача @{username} не знайдено.")
         return
 
+    # Додаємо бали користувачу
     await update_points(user_id, points)
+    
+    # Отримуємо ім'я адміністратора
+    admin_username = message.from_user.username
+    
+    # Формуємо дату і час
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Повідомлення адміністратору з деталями
+    await bot.send_message(
+        ADMIN_ID, 
+        f"Адміністратор @{admin_username} додав {points} балів користувачу @{username}.\n"
+        f"Дія виконана: {current_time}."
+    )
+    
+    # Повідомлення користувачу
     await message.answer(f"✅ Додано {points} балів для @{username}.")
     await bot.send_message(user_id, f"🎉 Вам додано {points} балів.")
 
@@ -388,7 +409,23 @@ async def handle_take_points(message: Message):
         await message.answer(f"👤 Користувача @{username} не знайдено.")
         return
 
+    # Знімаємо бали у користувача
     await update_points(user_id, -points)
+    
+    # Отримуємо ім'я адміністратора
+    admin_username = message.from_user.username
+    
+    # Формуємо дату і час
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Повідомлення адміністратору з деталями
+    await bot.send_message(
+        ADMIN_ID, 
+        f"Адміністратор @{admin_username} зняв {points} балів у користувача @{username}.\n"
+        f"Дія виконана: {current_time}."
+    )
+    
+    # Повідомлення користувачу
     await message.answer(f"❌ Знято {points} балів у @{username}.")
     await bot.send_message(user_id, f"⚠️ У вас знято {points} балів.")
 
