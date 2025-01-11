@@ -397,7 +397,6 @@ async def handle_give_points(message: Message):
 
     # Повідомлення користувачу
     await message.answer(f"✅ Додано {points} балів користувачу @{username}. Новий баланс: {new_balance} балів.")
-    await bot.send_message(user_id, f"✅ Вам додано {points} балів. Ваш новий баланс: {new_balance} балів.")
 
 @dp.message(Command("take"))
 async def handle_take_points(message: Message):
@@ -442,7 +441,6 @@ async def handle_take_points(message: Message):
 
     # Повідомлення користувачу
     await message.answer(f"✅ Віднято {points} балів у користувача @{username}. Новий баланс: {new_balance} балів.")
-    await bot.send_message(user_id, f"✅ У вас віднято {points} балів. Ваш новий баланс: {new_balance} балів.")
 
 @dp.message()
 async def auto_register_user(message: Message):
