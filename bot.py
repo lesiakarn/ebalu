@@ -263,7 +263,7 @@ async def handle_buy_item(message: Message):
     else:
         await update_user_balance(user_id, -cost)
         await message.answer(f"✅ Ви придбали {message.text}!")
-        await log_action("buy", user_id, username, f"Purchased {message.text}")
+        await log_action("buy", user_id, username, f"{message.text}")
 
 #Повертає користувача в головне меню
 @dp.message(lambda message: message.text == "🔙 Назад")
