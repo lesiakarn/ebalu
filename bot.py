@@ -1,5 +1,4 @@
 import asyncio
-import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
@@ -21,23 +20,21 @@ dp = Dispatcher()
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
 
 async def init_db():
+    """Ініціалізація бази даних."""
     conn = await asyncpg.connect(DATABASE_URL)
-    # Створюємо таблицю користувачів
     await conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id BIGINT PRIMARY KEY,
-            username TEXT,
-            balance INT DEFAULT 0
-        )
-    """)
-    # Створюємо таблицю адміністраторів
-    await conn.execute("""
-        CREATE TABLE IF NOT EXISTS administrators (
-            user_id BIGINT PRIMARY KEY,
-            username TEXT
-        )
+    CREATE TABLE IF NOT EXISTS users (
+        user_id BIGINT PRIMARY KEY,
+        username TEXT,
+        balance INT DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS administrators (
+        user_id BIGINT PRIMARY KEY,
+        username TEXT
+    );
     """)
     await conn.close()
+    print("База даних ініціалізована.")
 
 async def get_user_balance(user_id):
     conn = await asyncpg.connect(DATABASE_URL)
@@ -112,7 +109,7 @@ async def handle_commands(message: Message):
         "🛠 Список команд:\n"
         "/balance - Перевірити баланс\n"
         "/rating - Переглянути рейтинг\n"
-        "/adjust - Змінити баланс користувача"
+        "/adjust - Змінити баланс користувача\n"
         "/admins - Переглянути список адміністраторів\n",
         reply_markup=main_keyboard
     )
@@ -150,7 +147,7 @@ async def handle_buy_item(message: Message):
     else:
         await update_user_balance(user_id, -cost)
         await message.answer(f"✅ Ви придбали {message.text}!", reply_markup=main_keyboard)
-        await log_action(ADMIN_ID, f"Користувач {message.from_user.username} придбав {message.text}.")
+        await log_action("buy", user_id, f"Purchased {message.text}")
 
 @dp.message(Command("adjust"))
 async def handle_adjust_balance(message: Message):
@@ -175,7 +172,7 @@ async def handle_adjust_balance(message: Message):
     current_balance = await get_user_balance(user_id)
     new_balance = max(MIN_BALANCE, min(current_balance + points, MAX_BALANCE))
     await update_user_balance(user_id, points)
-    await log_action(ADMIN_ID, f"Адміністратор {message.from_user.username} змінив баланс @{username} на {points}.")
+    await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
     await message.answer(f"✅ Баланс користувача @{username} оновлено: {new_balance} балів.")
 
 @dp.message(Command("rating"))
@@ -259,6 +256,17 @@ async def handle_remove_admin(message: types.Message):
 async def main():
     print("Бот запущено...")
     await init_db()
+    dp.message.bind(auto_register_user)
+    dp.message.bind(handle_start)
+    dp.message.bind(handle_commands)
+    dp.message.bind(handle_balance)
+    dp.message.bind(handle_buy_menu_or_back)
+    dp.message.bind(handle_buy_item)
+    dp.message.bind(handle_adjust_balance)
+    dp.message.bind(handle_rating)
+    dp.message.bind(handle_admins)
+    dp.message.bind(handle_add_admin)
+    dp.message.bind(handle_remove_admin)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
