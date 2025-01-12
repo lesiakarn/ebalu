@@ -277,10 +277,15 @@ async def handle_adjust_command(message: Message):
         await message.answer(f"❌ Користувача @{username} не знайдено.")
         return
 
+    conn = await asyncpg.connect(DATABASE_URL)
+        user_data = await conn.fetchrow("SELECT balance FROM users WHERE username = $1", username)
+        await conn.close()
+
     success = await update_user_balance(user_id, points)
     if success:
         await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
-        await message.answer(f"✅ Баланс @{username} становить {new_balance}.")
+        balance = user_data['balance']
+        await message.answer(f"✅ Баланс @{username} становить {balance}.")
     else:
         await message.answer(f"⚠️ Помилка оновлення балансу @{username}.")
 
