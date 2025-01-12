@@ -50,12 +50,19 @@ async def init_db():
     await conn.close()
     print("База даних ініціалізована.")
 
-# Перевіряє, чи є користувач адміністратором
-async def is_admin(user_id):
+# Отримати список усіх користувачів з бази даних
+async def get_users():
     conn = await asyncpg.connect(DATABASE_URL)
-    is_admin = await conn.fetchval("SELECT user_id FROM administrators WHERE user_id = $1", user_id)
+    users = await conn.fetch("SELECT username, balance FROM users ORDER BY balance DESC")
     await conn.close()
-    return is_admin is not None
+    return users
+
+# Отримати список адміністраторів
+async def get_admins():
+    conn = await asyncpg.connect(DATABASE_URL)
+    admins = await conn.fetch("SELECT user_id FROM administrators")
+    await conn.close()
+    return admins
 
 # Функції для роботи з базою даних
 async def register_user(user_id, username):
