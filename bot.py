@@ -19,20 +19,19 @@ dp = Dispatcher()
 # URL підключення до PostgreSQL
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
 
+# Підключення до бази даних
 async def init_db():
-    """Ініціалізація бази даних."""
     conn = await asyncpg.connect(DATABASE_URL)
-    await conn.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        user_id BIGINT PRIMARY KEY,
-        username TEXT,
-        balance INT DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS administrators (
-        user_id BIGINT PRIMARY KEY,
-        username TEXT
-    );
-    """)
+    await conn.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT,
+            points INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS administrators (
+            user_id BIGINT PRIMARY KEY
+        );
+    ''')
     await conn.close()
     print("База даних ініціалізована.")
 
