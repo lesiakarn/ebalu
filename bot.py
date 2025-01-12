@@ -45,6 +45,7 @@ async def init_db():
         );
         CREATE TABLE IF NOT EXISTS administrators (
             user_id BIGINT PRIMARY KEY
+            username TEXT
         );
     ''')
     await conn.close()
@@ -140,13 +141,18 @@ async def handle_rating(message: Message):
     await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
 
 @dp.message(Command("admins"))
-async def handle_admins(message: Message):
-    admins = await get_admins()
+async def handle_admins(message: types.Message):
+    conn = await asyncpg.connect(DATABASE_URL)
+    admins = await conn.fetch("SELECT username FROM administrators")
+    await conn.close()
+
     if not admins:
         await message.answer("❌ Список адміністраторів порожній.")
         return
-    admin_list = "\n".join([f"ID: {admin['user_id']}" for admin in admins])
+
+    admin_list = "\n".join([f"@{admin['username']}" for admin in admins])
     await message.answer(f"👑 Список адміністраторів:\n{admin_list}")
+
 @dp.message(Command("add"))
 async def handle_add_admin(message: types.Message):
     if str(message.from_user.id) != ADMIN_ID:
