@@ -425,27 +425,30 @@ async def handle_take_points(message: Message):
         await message.answer(f"👤 Користувача @{username} не знайдено.")
         return
 
-    # Отримуємо поточний баланс користувача
-    current_balance = await get_user_balance(user_id)
+    points_to_deduct = min(points, current_balance)
 
-    # Віднімаємо бали, але не дозволяємо балансу йти нижче за 0
-    new_balance = max(0, current_balance - points)
-
-    # Оновлюємо баланс користувача в базі даних
-    user_balances[user_id] = new_balance
+    # Оновлюємо баланс користувача
+    new_balance = current_balance - points_to_deduct
+    await update_user_balance(user_id, new_balance)
 
     # Повідомлення адміністратору
     admin_username = message.from_user.username
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     await bot.send_message(
-        ADMIN_ID, 
-        f"Адміністратор @{admin_username} відняв {points} балів у користувача @{username}.\n"
+        ADMIN_ID,
+        f"Адміністратор @{admin_username} зняв {points_to_deduct} балів у користувача @{username}.\n"
         f"Новий баланс: {new_balance}.\n"
         f"Дія виконана: {current_time}."
     )
 
     # Повідомлення користувачу
-    await message.answer(f"✅ Віднято {points} балів у користувача @{username}. Новий баланс: {new_balance} балів.")
+    await bot.send_message(
+        user_id,
+        f"У вас було знято {points_to_deduct} балів. Ваш новий баланс: {new_balance}."
+    )
+
+    await message.answer(f"✅ Знято {points_to_deduct} балів у @{username}. Новий баланс: {new_balance} балів.")
+
 
 @dp.message()
 async def auto_register_user(message: Message):
