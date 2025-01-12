@@ -147,6 +147,60 @@ async def handle_admins(message: Message):
         return
     admin_list = "\n".join([f"ID: {admin['user_id']}" for admin in admins])
     await message.answer(f"👑 Список адміністраторів:\n{admin_list}")
+@dp.message(Command("add"))
+async def handle_add_admin(message: types.Message):
+    if str(message.from_user.id) != ADMIN_ID:
+        await message.answer("❌ У вас немає прав для цієї команди.")
+        return
+
+    args = message.text.split()
+    if len(args) != 2:
+        await message.answer("⚠️ Невірний формат команди. Використовуйте: /add @username")
+        return
+
+    username = args[1].lstrip('@')
+    conn = await asyncpg.connect(DATABASE_URL)
+    user_id = await conn.fetchval("SELECT user_id FROM users WHERE username = $1", username)
+
+    if not user_id:
+        await conn.close()
+        await message.answer(f"👤 Користувача @{username} не знайдено.")
+        return
+
+    await conn.execute(
+        "INSERT INTO administrators (user_id, username) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING",
+        user_id, username
+    )
+    await conn.close()
+
+    await message.answer(f"✅ Користувач @{username} доданий до списку адміністраторів.")
+    await log_action("add_admin", message.from_user.id, f"Added @{username}")
+
+@dp.message(Command("remove"))
+async def handle_remove_admin(message: types.Message):
+    if str(message.from_user.id) != ADMIN_ID:
+        await message.answer("❌ У вас немає прав для цієї команди.")
+        return
+
+    args = message.text.split()
+    if len(args) != 2:
+        await message.answer("⚠️ Невірний формат команди. Використовуйте: /remove @username")
+        return
+
+    username = args[1].lstrip('@')
+    conn = await asyncpg.connect(DATABASE_URL)
+    user_id = await conn.fetchval("SELECT user_id FROM administrators WHERE username = $1", username)
+
+    if not user_id:
+        await conn.close()
+        await message.answer(f"👤 Користувача @{username} не знайдено у списку адміністраторів.")
+        return
+
+    await conn.execute("DELETE FROM administrators WHERE user_id = $1", user_id)
+    await conn.close()
+
+    await message.answer(f"❌ Користувач @{username} видалений зі списку адміністраторів.")
+    await log_action("remove_admin", message.from_user.id, f"Removed @{username}")
 
 
 @dp.message(lambda message: message.text == "📜 Команди")
@@ -226,7 +280,7 @@ async def handle_adjust_command(message: Message):
     success = await update_user_balance(user_id, points)
     if success:
         await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
-        await message.answer(f"✅ Баланс @{username} успішно оновлено.")
+        await message.answer(f"✅ Баланс @{username} становить {balance}.")
     else:
         await message.answer(f"⚠️ Помилка оновлення балансу @{username}.")
 
