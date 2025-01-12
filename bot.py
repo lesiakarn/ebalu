@@ -108,8 +108,7 @@ async def log_action(action, user_id, username, details=""):
         for admin in admins:
             await bot.send_message(admin["user_id"], f"🛒 Користувач @{username} здійснив покупку: {details}")
     else:
-        awaisend_message(ADMIN_ID, f"📋 Лог дій:\n{log_message}")t bot.
-
+        await bot.send_message(ADMIN_ID, f"📋 Лог дій:\n{log_message}")
 
 # Хендлери
 @dp.message(Command("start"))
