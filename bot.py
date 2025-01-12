@@ -105,13 +105,18 @@ async def log_action(action, user_id, username, details=""):
 
     # Отримуємо список адміністраторів
     admins = await get_admins()
-    
-    if action == "buy":  # Надсилати тільки у випадку покупки
+
+    if action == "buy":
+        # Якщо details порожній, замінюємо його на "без деталей"
+        details_message = details if details else "без деталей"
         for admin in admins:
-            await bot.send_message(admin["user_id"], f"🛒 Користувач @{username} здійснив покупку: {details}")
+            await bot.send_message(
+                admin["user_id"], 
+                f"🛒 Користувач @{username} здійснив покупку: {details_message}"
+            )
     else:
-        # Надсилаємо лог адміністратору за замовчуванням
         await bot.send_message(ADMIN_ID, f"📋 Лог дій:\n{log_message}")
+
 
 
 # Хендлери
