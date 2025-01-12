@@ -19,6 +19,25 @@ dp = Dispatcher()
 # URL підключення до PostgreSQL
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
 
+async def init_db():
+    conn = await asyncpg.connect(DATABASE_URL)
+    # Створюємо таблицю користувачів
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT,
+            balance INT DEFAULT 0
+        )
+    """)
+    # Створюємо таблицю адміністраторів
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS administrators (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT
+        )
+    """)
+    await conn.close()
+
 async def get_user_balance(user_id):
     conn = await asyncpg.connect(DATABASE_URL)
     balance = await conn.fetchval("SELECT balance FROM users WHERE user_id = $1", user_id)
