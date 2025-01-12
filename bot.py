@@ -50,6 +50,13 @@ async def init_db():
     await conn.close()
     print("База даних ініціалізована.")
 
+# Перевіряє, чи є користувач адміністратором
+async def is_admin(user_id):
+    conn = await asyncpg.connect(DATABASE_URL)
+    is_admin = await conn.fetchval("SELECT user_id FROM administrators WHERE user_id = $1", user_id)
+    await conn.close()
+    return is_admin is not None
+
 # Функції для роботи з базою даних
 async def register_user(user_id, username):
     conn = await asyncpg.connect(DATABASE_URL)
@@ -107,6 +114,24 @@ async def handle_balance_command(message: Message):
             await message.answer(f"💰 Баланс @{username}: {balance} балів.")
         else:
             await message.answer(f"❌ Користувача @{username} не знайдено.")
+
+@dp.message(Command("rating"))
+async def handle_rating(message: Message):
+    users = await get_users()
+    if not users:
+        await message.answer("📉 Рейтинг порожній.")
+        return
+    rating = "\n".join([f"@{row['username']}: {row['balance']} балів" for row in users])
+    await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
+
+@dp.message(Command("admins"))
+async def handle_admins(message: Message):
+    admins = await get_admins()
+    if not admins:
+        await message.answer("❌ Список адміністраторів порожній.")
+        return
+    admin_list = "\n".join([f"ID: {admin['user_id']}" for admin in admins])
+    await message.answer(f"👑 Список адміністраторів:\n{admin_list}")
 
 @dp.message(Command("adjust"))
 async def handle_adjust_command(message: Message):
