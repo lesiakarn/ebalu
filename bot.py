@@ -33,7 +33,6 @@ async def init_db():
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS administrators (
             user_id BIGINT PRIMARY KEY,
-            username TEXT
         )
     """)
     await conn.close()
