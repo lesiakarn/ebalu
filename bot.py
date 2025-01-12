@@ -213,8 +213,9 @@ async def handle_adjust_command(message: Message):
     success = await update_user_balance(user_id, points)
     if success:
         await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
-        await message.answer(f"✅ Баланс користувача @{username} оновлено: {new_balance} балів.")
-
+        await message.answer(f"✅ Баланс @{username} успішно оновлено.")
+    else:
+        await message.answer(f"⚠️ Помилка оновлення балансу @{username}.")
 
 async def main():
     print("Бот запущено...")
