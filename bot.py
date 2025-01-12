@@ -234,13 +234,13 @@ async def handle_buy_menu(message: Message):
     await message.answer(
         "🛍 Оберіть товар:\n"
         "🛡 Старійшина - 10 балів\n"
-        "⚔️ Підкріплення - 5 балів",
+        "⚔️ Підкріплення - 2 бали",
         reply_markup=buy_keyboard
     )
 
 @dp.message(lambda message: message.text in ["🛡 Старійшина", "⚔️ Підкріплення"])
 async def handle_buy_item(message: Message):
-    items = {"🛡 Старійшина": 10, "⚔️ Підкріплення": 5}
+    items = {"🛡 Старійшина": 10, "⚔️ Підкріплення": 2}
     cost = items[message.text]
     user_id = message.from_user.id
     balance = await get_user_balance(user_id)
