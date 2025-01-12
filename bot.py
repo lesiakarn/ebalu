@@ -388,7 +388,7 @@ async def handle_give_points(message: Message):
     new_balance = min(current_balance + points, MAX_BALANCE)
 
     # Оновлюємо баланс користувача в базі даних
-    user_balances[user_id] = new_balance
+    await update_user_balance(user_id, new_balance)
 
     # Повідомлення адміністратору
     admin_username = message.from_user.username
