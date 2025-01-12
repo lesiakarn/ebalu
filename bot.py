@@ -98,9 +98,9 @@ async def update_user_balance(user_id, amount):
     await conn.close()
     return True
 
-async def log_action(action, user_id, username, details=""):
+async def log_action(action, user_id, details="", username):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_message = f"[{current_time}] ACTION: {action}, USER_ID: {user_id}, USER_NAME: {username}, DETAILS: {details}"
+    log_message = f"[{current_time}] ACTION: {action}, USER_ID: {user_id}, DETAILS: {details}, USER_NAME: {username}"
     print(log_message)
 
     # Отримуємо список адміністраторів
@@ -108,11 +108,10 @@ async def log_action(action, user_id, username, details=""):
 
     if action == "buy":
         # Якщо details порожній, замінюємо його на "без деталей"
-        details_message = details if details else "без деталей"
         for admin in admins:
             await bot.send_message(
                 admin["user_id"], 
-                f"🛒 Користувач @{username} здійснив покупку: {details_message}"
+                f"🛒 Користувач @{username} здійснив покупку: {details}"
             )
     else:
         await bot.send_message(ADMIN_ID, f"📋 Лог дій:\n{log_message}")
