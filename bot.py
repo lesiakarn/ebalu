@@ -7,8 +7,8 @@ from datetime import datetime
 import asyncpg
 
 # Токен вашого бота
-API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y"
-ADMIN_ID = "1360055963"
+API_TOKEN = "5207732731:AAFXqa0bgsYyHXQnNt5MrrQVZA0kO1APt4I"
+ADMIN_ID = "5085585811"
 MAX_POINTS = 1000  # Максимальна кількість балів, які можна додати чи зняти за один раз
 MAX_BALANCE = 1000  # Максимальний баланс користувача
 MIN_BALANCE = 0     # Мінімальний баланс користувача
@@ -367,12 +367,8 @@ async def handle_give_points(message: Message):
 
     username, points = args[1].lstrip('@'), int(args[2])
 
-    if points < 0:
-        await message.answer("🚫 Ви не можете додавати від'ємні бали!")
-        return
-
-    if points > MAX_POINTS:
-        await message.answer(f"⚠️ Неможливо додати більше ніж {MAX_POINTS} балів.")
+    if abs(points) > MAX_POINTS:
+        await message.answer(f"⚠️ Неможливо додати або відняти більше ніж {MAX_POINTS} балів за один раз.")
         return
 
     user_id = await get_user_id_by_username(username)
@@ -384,8 +380,16 @@ async def handle_give_points(message: Message):
     # Отримуємо поточний баланс користувача
     current_balance = await get_user_balance(user_id)
 
-    # Додаємо бали до балансу
-    new_balance = min(current_balance + points, MAX_BALANCE)
+    # Логіка додавання або віднімання балів
+    if points < 0:
+        points_to_deduct = min(abs(points), current_balance)
+        new_balance = current_balance - points_to_deduct
+    else:
+        new_balance = min(current_balance + points, MAX_BALANCE)
+
+    if new_balance == current_balance:
+        await message.answer(f"⚠️ Неможливо виконати дію. Перевірте баланс користувача та команду.")
+        return
 
     # Оновлюємо баланс користувача в базі даних
     await update_user_balance(user_id, new_balance)
@@ -393,62 +397,34 @@ async def handle_give_points(message: Message):
     # Повідомлення адміністратору
     admin_username = message.from_user.username
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    action = "додав" if points > 0 else "зняв"
     await bot.send_message(
         ADMIN_ID, 
-        f"Адміністратор @{admin_username} додав {points} балів у користувача @{username}.\n"
-        f"Новий баланс: {new_balance}.\n"
+        f"Адміністратор @{admin_username} {action} {abs(points)} балів у користувача @{username}.
+"
+        f"Новий баланс: {new_balance}.
+"
         f"Дія виконана: {current_time}."
     )
 
     # Повідомлення користувачу
-    await message.answer(f"✅ Додано {points} балів користувачу @{username}. Новий баланс: {new_balance} балів.")
+    if points > 0:
+        await bot.send_message(
+            user_id,
+            f"✅ Вам було додано {points} балів. Ваш новий баланс: {new_balance}."
+        )
+    else:
+        await bot.send_message(
+            user_id,
+            f"❌ У вас було знято {abs(points_to_deduct)} балів. Ваш новий баланс: {new_balance}."
+        )
+
+    await message.answer(f"✅ Операція виконана. Новий баланс користувача @{username}: {new_balance} балів.")
 
 @dp.message(Command("take"))
 async def handle_take_points(message: Message):
-    if not await is_admin(message.from_user.id):
-        await message.answer("❌ У вас немає прав для цієї команди.")
-        return
-
-    args = message.text.split()
-    if len(args) != 3:
-        await message.answer("⚠️ Невірний формат команди. Використовуйте: /take @username <кількість>")
-        return
-
-    username, points = args[1].lstrip('@'), int(args[2])
-    if points > MAX_POINTS:
-        await message.answer(f"⚠️ Неможливо відняти більше ніж {MAX_POINTS} балів.")
-        return
-
-    user_id = await get_user_id_by_username(username)
-
-    if not user_id:
-        await message.answer(f"👤 Користувача @{username} не знайдено.")
-        return
-
-    points_to_deduct = min(points, current_balance)
-
-    # Оновлюємо баланс користувача
-    new_balance = current_balance - points_to_deduct
-    await update_user_balance(user_id, new_balance)
-
-    # Повідомлення адміністратору
-    admin_username = message.from_user.username
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    await bot.send_message(
-        ADMIN_ID,
-        f"Адміністратор @{admin_username} зняв {points_to_deduct} балів у користувача @{username}.\n"
-        f"Новий баланс: {new_balance}.\n"
-        f"Дія виконана: {current_time}."
-    )
-
-    # Повідомлення користувачу
-    await bot.send_message(
-        user_id,
-        f"У вас було знято {points_to_deduct} балів. Ваш новий баланс: {new_balance}."
-    )
-
-    await message.answer(f"✅ Знято {points_to_deduct} балів у @{username}. Новий баланс: {new_balance} балів.")
-
+    args = message.text.replace("/take", "/give").strip()
+    await handle_give_points(args)
 
 @dp.message()
 async def auto_register_user(message: Message):
