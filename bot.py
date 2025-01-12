@@ -72,7 +72,6 @@ async def is_admin(user_id):
     await conn.close()
     return is_admin is not None
 
-
 # Функції для роботи з базою даних
 async def register_user(user_id, username):
     conn = await asyncpg.connect(DATABASE_URL)
@@ -99,12 +98,15 @@ async def update_user_balance(user_id, amount):
     await conn.close()
     return True
 
-async def log_action(action, user_id, details=""):
+async def log_action(action, user_id, username, details=""):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_message = f"[{current_time}] ACTION: {action}, USER_ID: {user_id}, DETAILS: {details}"
+    log_message = f"[{current_time}] ACTION: {action}, USER_ID: {user_id}, USER_NAME {username}, DETAILS: {details}"
     print(log_message)
     # Надсилаємо лог адміністратору
     await bot.send_message(ADMIN_ID, f"📋 Лог дій:\n{log_message}")
+    if action == "buy":
+        for admin in admins:
+            await bot.send_message(admin["user_id"], f"🛒 Користувач {username} здійснив покупку: {details}")
 
 # Хендлери
 @dp.message(Command("start"))
