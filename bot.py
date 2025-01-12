@@ -21,8 +21,8 @@ dp = Dispatcher()
 # Клавіатури
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🛒 Купити")],
-        [KeyboardButton(text="📜 Команди"), KeyboardButton(text="💰 Баланс")],
+        [KeyboardButton(text="📜 Команди")],
+        [KeyboardButton(text="🛒 Купити"), KeyboardButton(text="💰 Баланс")],
     ],
     resize_keyboard=True,
 )
