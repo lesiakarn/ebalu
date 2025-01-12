@@ -276,11 +276,7 @@ async def handle_adjust_command(message: Message):
     if not user_id:
         await message.answer(f"❌ Користувача @{username} не знайдено.")
         return
-
-    conn = await asyncpg.connect(DATABASE_URL)
-        user_data = await conn.fetchrow("SELECT balance FROM users WHERE username = $1", username)
-        await conn.close()
-
+        
     success = await update_user_balance(user_id, points)
     if success:
         username = args[1].lstrip('@')
