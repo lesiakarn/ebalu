@@ -98,7 +98,7 @@ async def update_user_balance(user_id, amount):
     await conn.close()
     return True
 
-async def log_action(action, user_id, details="", username):
+async def log_action(action, user_id, username, details=""):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_message = f"[{current_time}] ACTION: {action}, USER_ID: {user_id}, USER_NAME: {username}, DETAILS: {details}"
     print(log_message)
