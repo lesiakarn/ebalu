@@ -3,7 +3,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 from datetime import datetime
-from datetime import datetime
 import asyncpg
 
 # Токен вашого бота
@@ -70,17 +69,46 @@ async def handle_commands_menu(message: types.Message):
     )
 
 
+@dp.message(Command("balance"))
+async def show_balance(message: Message):
+    args = message.text.split()
+    
+    if len(args) == 1:  # Перегляд власного балансу
+        user_id = str(message.from_user.id)
+
+        if user_id not in data["users"]:
+            await message.answer("⚠️ Ви ще не зареєстровані в системі. Надішліть будь-яке повідомлення, щоб зареєструватися.")
+            return
+
+        username = data["users"][user_id]["username"]
+        balance = data["users"][user_id]["balance"]
+
+        await message.answer(f"💰 Ваш баланс: {balance} балів.\nКористувач: @{username}.")
+    elif len(args) == 2:  # Перегляд балансу іншого користувача
+        username = args[1].lstrip('@')
+        user_id = next((uid for uid, info in data["users"].items() if info["username"] == username), None)
+
+        if not user_id:
+            await message.answer(f"👤 Користувача @{username} не знайдено.")
+            return
+
+        bakance = data["users"][str(user_id)]["balance"]
+        await message.answer(f"💰 Баланс користувача @{username}: {balance} балів.")
+    else:
+        await message.answer("⚠️ Невірний формат команди. Використовуйте:\n- /balance (щоб побачити свій баланс)\n- /balance @username (щоб побачити баланс іншого користувача)")
+
+
 @dp.message(lambda message: message.text == "💰 Баланс")
 async def handle_balance_button(message: types.Message):
     user_id = message.from_user.id
     conn = await asyncpg.connect(DATABASE_URL)
-    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
+    balance = await conn.fetchval("SELECT balance FROM users WHERE user_id = $1", user_id)
     await conn.close()
 
-    if points is None:
+    if balance is None:
         await message.answer("⚠️ Ваш обліковий запис не зареєстровано в системі.")
     else:
-        await message.answer(f"💰 Ваш баланс: {points} балів.")
+        await message.answer(f"💰 Ваш баланс: {balance} балів.")
 
 @dp.message(lambda message: message.text in ["🛒 Купити", "🔙 Назад"])
 async def handle_buy_menu_or_back(message: types.Message):
@@ -106,16 +134,16 @@ async def handle_buy_item(message: types.Message):
     username = message.from_user.username
 
     conn = await asyncpg.connect(DATABASE_URL)
-    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
+    balance = await conn.fetchval("SELECT balance FROM users WHERE user_id = $1", user_id)
 
-    if points is None or points < cost:
+    if balance is None or balance < cost:
         await message.answer(
             f"❌ Недостатньо балів для покупки '{item}'. Необхідно: {cost} балів."
         )
     else:
         # Списати бали
         await conn.execute(
-            "UPDATE users SET points = points - $1 WHERE user_id = $2", cost, user_id
+            "UPDATE users SET balance = balance - $1 WHERE user_id = $2", cost, user_id
         )
         # Відправка повідомлення адміністраторам
         admin_ids = await get_admins()
@@ -131,13 +159,13 @@ async def handle_buy_item(message: types.Message):
 async def handle_balance_button(message: Message):
     user_id = message.from_user.id
     conn = await asyncpg.connect(DATABASE_URL)
-    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
+    balance = await conn.fetchval("SELECT balance FROM users WHERE user_id = $1", user_id)
     await conn.close()
 
-    if points is None:
+    if balance is None:
         await message.answer("⚠️ Ваш обліковий запис не зареєстровано в системі.")
     else:
-        await message.answer(f"💰 Ваш баланс: {points} балів.")
+        await message.answer(f"💰 Ваш баланс: {balance} балів.")
 
 @dp.message(lambda message: message.text == "🛒 Купити")
 async def handle_buy_menu(message: Message):
@@ -146,31 +174,6 @@ async def handle_buy_menu(message: Message):
         reply_markup=buy_keyboard
     )
 
-@dp.message(lambda message: message.text in ["🛡 Старійшина", "⚔️ Підкріплення"])
-async def handle_buy_item(message: Message):
-    item = "Старійшина" if message.text == "🛡 Старійшина" else "Підкріплення"
-    cost = 10 if item == "Старійшина" else 5
-    user_id = message.from_user.id
-    username = message.from_user.username
-
-    conn = await asyncpg.connect(DATABASE_URL)
-    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
-
-    if points is None or points < cost:
-        await message.answer(f"❌ Недостатньо балів для покупки '{item}'. Необхідно: {cost} балів.")
-    else:
-        # Списати бали
-        await conn.execute(
-            "UPDATE users SET points = points - $1 WHERE user_id = $2",
-            cost, user_id
-        )
-        # Відправка повідомлення адміністраторам
-        admin_ids = await get_admins()
-        for admin_id in admin_ids:
-            await bot.send_message(admin_id, f"@{username} купив '{item}'.")
-
-        await message.answer(f"✅ Ви успішно придбали '{item}'.", reply_markup=main_keyboard)
-    
 # Підключення до бази даних
 async def init_db():
     conn = await asyncpg.connect(DATABASE_URL)
@@ -178,7 +181,7 @@ async def init_db():
         CREATE TABLE IF NOT EXISTS users (
             user_id BIGINT PRIMARY KEY,
             username TEXT,
-            points INTEGER DEFAULT 0
+            balance INTEGER DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS administrators (
             user_id BIGINT PRIMARY KEY
@@ -229,14 +232,14 @@ async def get_admins():
     await conn.close()
     return [row["user_id"] for row in rows]
 
-async def update_points(user_id, points):
+async def update_balance(user_id, balance):
     conn = await asyncpg.connect(DATABASE_URL)
-    await conn.execute("UPDATE users SET points = points + $1 WHERE user_id = $2", points, user_id)
+    await conn.execute("UPDATE users SET balance = balance + $1 WHERE user_id = $2", balance, user_id)
     await conn.close()
 
 async def get_users():
     conn = await asyncpg.connect(DATABASE_URL)
-    rows = await conn.fetch("SELECT username, points FROM users ORDER BY points DESC")
+    rows = await conn.fetch("SELECT username, balance FROM users ORDER BY balance DESC")
     await conn.close()
     return rows
 
@@ -263,13 +266,13 @@ async def handle_commands_menu(message: Message):
 async def handle_balance_button(message: Message):
     user_id = message.from_user.id
     conn = await asyncpg.connect(DATABASE_URL)
-    points = await conn.fetchval("SELECT points FROM users WHERE user_id = $1", user_id)
+    balance = await conn.fetchval("SELECT balance FROM users WHERE user_id = $1", user_id)
     await conn.close()
 
-    if points is None:
+    if balance is None:
         await message.answer("⚠️ Ваш обліковий запис не зареєстровано в системі.")
     else:
-        await message.answer(f"💰 Ваш баланс: {points} балів.")
+        await message.answer(f"💰 Ваш баланс: {balance} балів.")
 
 @dp.message(lambda message: message.text == "🛒 Купити")
 async def handle_buy_menu(message: Message):
@@ -358,7 +361,7 @@ async def handle_show_rating(message: Message):
         await message.answer("📉 Рейтинг порожній.")
         return
 
-    rating = "\n".join([f"@{row['username']}: {row['points']} балів" for row in users])
+    rating = "\n".join([f"@{row['username']}: {row['balance']} балів" for row in users])
     await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
 
 @dp.message(Command("give"))
