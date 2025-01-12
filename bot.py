@@ -19,6 +19,13 @@ dp = Dispatcher()
 
 # URL підключення до PostgreSQL
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
+
+async def get_user_balance(user_id: int) -> int:
+    # Наприклад, отримуємо баланс користувача з бази даних
+    result = await DATABASE_URL.fetch_one("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+    return result["balance"] if result else 0
+
+
 # Створення кнопок
 commands_button = KeyboardButton(text="📜 Команди")
 balance_button = KeyboardButton(text="💰 Баланс")
