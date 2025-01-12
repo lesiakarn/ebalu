@@ -168,11 +168,6 @@ async def handle_rating(message: Message):
     rating = "\n".join([f"@{row['username']}: {row['balance']} балів" for row in users])
     await message.answer(f"🏆 Рейтинг користувачів:\n{rating}")
 
-async def main():
-    print("Бот запущено...")
-    await init_db()
-    await dp.start_polling(bot)
-
 @dp.message(Command("admins"))
 async def handle_admins(message: types.Message):
     conn = await asyncpg.connect(DATABASE_URL)
@@ -241,5 +236,22 @@ async def handle_remove_admin(message: types.Message):
     await message.answer(f"❌ Користувач @{username} видалений зі списку адміністраторів.")
     await log_action("remove_admin", message.from_user.id, f"Removed @{username}")
 
-if __name__ == "__main__":
-    asyncio.run(main())
+async def init_db():
+    conn = await asyncpg.connect(DATABASE_URL)
+    await conn.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT,
+            balance INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS administrators (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT
+        );
+    ''')
+    await conn.close()
+
+async def main():
+    print("Бот запущено...")
+    await init_db()
+    await dp.start_polling(bot)
