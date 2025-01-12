@@ -100,7 +100,7 @@ async def update_user_balance(user_id, amount):
 
 async def log_action(action, user_id, details="", username):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_message = f"[{current_time}] ACTION: {action}, USER_ID: {user_id}, DETAILS: {details}, USER_NAME: {username}"
+    log_message = f"[{current_time}] ACTION: {action}, USER_ID: {user_id}, USER_NAME: {username}, DETAILS: {details}"
     print(log_message)
 
     # Отримуємо список адміністраторів
@@ -255,6 +255,7 @@ async def handle_buy_item(message: Message):
     items = {"🛡 Старійшина": 10, "⚔️ Підкріплення": 2}
     cost = items[message.text]
     user_id = message.from_user.id
+    username = message.from_user.username or "unknown"
     balance = await get_user_balance(user_id)
 
     if balance is None or balance < cost:
@@ -262,7 +263,7 @@ async def handle_buy_item(message: Message):
     else:
         await update_user_balance(user_id, -cost)
         await message.answer(f"✅ Ви придбали {message.text}!")
-        await log_action("buy", user_id, f"Purchased {message.text}")
+        await log_action("buy", user_id, username, f"Purchased {message.text}")
 
 #Повертає користувача в головне меню
 @dp.message(lambda message: message.text == "🔙 Назад")
