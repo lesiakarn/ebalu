@@ -19,6 +19,26 @@ dp = Dispatcher()
 # URL підключення до PostgreSQL
 DATABASE_URL = "postgresql://postgres:GbiDFCpQQvWbQGxjNrrzxOkVsNzdinhx@viaduct.proxy.rlwy.net:23347/railway"
 
+async def init_db():
+    conn = await asyncpg.connect(DATABASE_URL)
+    # Створюємо таблицю користувачів
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT,
+            balance INT DEFAULT 0
+        )
+    """)
+    # Створюємо таблицю адміністраторів
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS administrators (
+            user_id BIGINT PRIMARY KEY,
+            username TEXT
+        )
+    """)
+    await conn.close()
+
+
 async def get_user_balance(user_id):
     conn = await asyncpg.connect(DATABASE_URL)
     balance = await conn.fetchval("SELECT balance FROM users WHERE user_id = $1", user_id)
@@ -235,21 +255,6 @@ async def handle_remove_admin(message: types.Message):
 
     await message.answer(f"❌ Користувач @{username} видалений зі списку адміністраторів.")
     await log_action("remove_admin", message.from_user.id, f"Removed @{username}")
-
-async def init_db():
-    conn = await asyncpg.connect(DATABASE_URL)
-    await conn.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id BIGINT PRIMARY KEY,
-            username TEXT,
-            balance INTEGER DEFAULT 0
-        );
-        CREATE TABLE IF NOT EXISTS administrators (
-            user_id BIGINT PRIMARY KEY,
-            username TEXT
-        );
-    ''')
-    await conn.close()
 
 async def main():
     print("Бот запущено...")
