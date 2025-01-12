@@ -400,24 +400,10 @@ async def handle_give_points(message: Message):
     action = "додав" if points > 0 else "зняв"
     await bot.send_message(
         ADMIN_ID, 
-        f"Адміністратор @{admin_username} {action} {abs(points)} балів у користувача @{username}.
-"
-        f"Новий баланс: {new_balance}.
-"
+        f"Адміністратор @{admin_username} {action} {abs(points)} балів у користувача @{username}."
+        f"Новий баланс: {new_balance}."
         f"Дія виконана: {current_time}."
     )
-
-    # Повідомлення користувачу
-    if points > 0:
-        await bot.send_message(
-            user_id,
-            f"✅ Вам було додано {points} балів. Ваш новий баланс: {new_balance}."
-        )
-    else:
-        await bot.send_message(
-            user_id,
-            f"❌ У вас було знято {abs(points_to_deduct)} балів. Ваш новий баланс: {new_balance}."
-        )
 
     await message.answer(f"✅ Операція виконана. Новий баланс користувача @{username}: {new_balance} балів.")
 
