@@ -213,35 +213,7 @@ async def handle_adjust_command(message: Message):
     success = await update_user_balance(user_id, points)
     if success:
         await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
-        await message.answer(f"✅ Баланс @{username} успішно оновлено.")
-    else:
-        await message.answer(f"⚠️ Помилка оновлення балансу @{username}.")
-
-@dp.message(Command("adjust"))
-async def handle_adjust_balance(message: Message):
-    if not await is_admin(message.from_user.id):
-        await message.answer("❌ У вас немає прав для виконання цієї команди.")
-        return
-
-    args = message.text.split()
-    if len(args) != 3:
-        await message.answer("⚠️ Невірний формат. Використовуйте: /adjust @username <кількість>")
-        return
-
-    username, points = args[1].lstrip('@'), int(args[2])
-    conn = await asyncpg.connect(DATABASE_URL)
-    user_id = await conn.fetchval("SELECT user_id FROM users WHERE username = $1", username)
-
-    if not user_id:
-        await conn.close()
-        await message.answer(f"👤 Користувача @{username} не знайдено.")
-        return
-
-    current_balance = await get_user_balance(user_id)
-    new_balance = max(MIN_BALANCE, min(current_balance + points, MAX_BALANCE))
-    await update_user_balance(user_id, points)
-    await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
-    await message.answer(f"✅ Баланс користувача @{username} оновлено: {new_balance} балів.")
+        await message.answer(f"✅ Баланс користувача @{username} оновлено: {new_balance} балів.")
 
 
 async def main():
