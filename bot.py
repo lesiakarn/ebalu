@@ -284,7 +284,7 @@ async def handle_adjust_command(message: Message):
         balance = await conn.fetchval("SELECT balance FROM users WHERE username = $1", username)
         await conn.close()
         await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
-        await message.answer(f"✅ Баланс @{username} становить {balance}.")
+        await message.answer(f"✅ Баланс @{username} змінено, тепер він становить {balance} балів.")
     else:
         await message.answer(f"⚠️ Помилка оновлення балансу @{username}.")
 
