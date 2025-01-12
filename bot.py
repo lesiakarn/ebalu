@@ -44,7 +44,7 @@ async def init_db():
             balance INTEGER DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS administrators (
-            user_id BIGINT PRIMARY KEY
+            user_id BIGINT PRIMARY KEY,
             username TEXT
         );
     ''')
