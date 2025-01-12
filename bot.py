@@ -140,6 +140,50 @@ async def handle_admins(message: Message):
     admin_list = "\n".join([f"ID: {admin['user_id']}" for admin in admins])
     await message.answer(f"👑 Список адміністраторів:\n{admin_list}")
 
+
+@dp.message(lambda message: message.text == "📜 Команди")
+async def handle_commands(message: Message):
+    await message.answer(
+        "🛠 Список команд:\n"
+        "/balance - Перевірити баланс\n"
+        "/rating - Переглянути рейтинг\n"
+        "/adjust - Змінити баланс користувача\n"
+        "/admins - Переглянути список адміністраторів\n",
+        reply_markup=main_keyboard
+    )
+
+@dp.message(lambda message: message.text == "💰 Баланс")
+async def handle_balance(message: Message):
+    user_id = message.from_user.id
+    balance = await get_user_balance(user_id)
+    if balance is None:
+        await message.answer("⚠️ Ви не зареєстровані в системі.")
+    else:
+        await message.answer(f"💰 Ваш баланс: {balance} балів.")
+
+@dp.message(lambda message: message.text == "🛒 Купити")
+async def handle_buy_menu(message: Message):
+    await message.answer(
+        "🛍 Оберіть товар:\n"
+        "🛡 Старійшина - 10 балів\n"
+        "⚔️ Підкріплення - 5 балів",
+        reply_markup=buy_keyboard
+    )
+
+@dp.message(lambda message: message.text in ["🛡 Старійшина", "⚔️ Підкріплення"])
+async def handle_buy_item(message: Message):
+    items = {"🛡 Старійшина": 10, "⚔️ Підкріплення": 5}
+    cost = items[message.text]
+    user_id = message.from_user.id
+    balance = await get_user_balance(user_id)
+
+    if balance is None or balance < cost:
+        await message.answer(f"❌ Недостатньо балів для покупки {message.text}.")
+    else:
+        await update_user_balance(user_id, -cost)
+        await message.answer(f"✅ Ви придбали {message.text}!")
+        await log_action("buy", user_id, f"Purchased {message.text}")
+
 @dp.message(Command("adjust"))
 async def handle_adjust_command(message: Message):
     if not await is_admin(message.from_user.id):
@@ -173,19 +217,32 @@ async def handle_adjust_command(message: Message):
     else:
         await message.answer(f"⚠️ Помилка оновлення балансу @{username}.")
 
-@dp.message(lambda message: message.text in ["🛡 Старійшина", "⚔️ Підкріплення"])
-async def handle_buy_item(message: Message):
-    items = {"🛡 Старійшина": 10, "⚔️ Підкріплення": 5}
-    cost = items[message.text]
-    user_id = message.from_user.id
-    balance = await get_user_balance(user_id)
+@dp.message(Command("adjust"))
+async def handle_adjust_balance(message: Message):
+    if not await is_admin(message.from_user.id):
+        await message.answer("❌ У вас немає прав для виконання цієї команди.")
+        return
 
-    if balance is None or balance < cost:
-        await message.answer(f"❌ Недостатньо балів для покупки {message.text}.")
-    else:
-        await update_user_balance(user_id, -cost)
-        await message.answer(f"✅ Ви придбали {message.text}!")
-        await log_action("buy", user_id, f"Purchased {message.text}")
+    args = message.text.split()
+    if len(args) != 3:
+        await message.answer("⚠️ Невірний формат. Використовуйте: /adjust @username <кількість>")
+        return
+
+    username, points = args[1].lstrip('@'), int(args[2])
+    conn = await asyncpg.connect(DATABASE_URL)
+    user_id = await conn.fetchval("SELECT user_id FROM users WHERE username = $1", username)
+
+    if not user_id:
+        await conn.close()
+        await message.answer(f"👤 Користувача @{username} не знайдено.")
+        return
+
+    current_balance = await get_user_balance(user_id)
+    new_balance = max(MIN_BALANCE, min(current_balance + points, MAX_BALANCE))
+    await update_user_balance(user_id, points)
+    await log_action("adjust", message.from_user.id, f"Updated @{username}'s balance by {points}")
+    await message.answer(f"✅ Баланс користувача @{username} оновлено: {new_balance} балів.")
+
 
 async def main():
     print("Бот запущено...")
