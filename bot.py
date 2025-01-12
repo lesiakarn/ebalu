@@ -6,8 +6,8 @@ from datetime import datetime
 import asyncpg
 
 # Константи
-API_TOKEN = "5207732731:AAFXqa0bgsYyHXQnNt5MrrQVZA0kO1APt4I"
-ADMIN_ID = 5085585811  # Адміністраторський ID
+API_TOKEN = "7867439762:AAG_ZLt6Jamj89ju8FpYb9DqRRlGfzXNi5Y"
+ADMIN_ID = 1360055963  # Адміністраторський ID
 MAX_POINTS = 1000
 MAX_BALANCE = 1000
 MIN_BALANCE = 0
