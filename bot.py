@@ -64,6 +64,14 @@ async def get_admins():
     await conn.close()
     return admins
 
+# Перевіряє, чи є користувач адміністратором
+async def is_admin(user_id):
+    conn = await asyncpg.connect(DATABASE_URL)
+    is_admin = await conn.fetchval("SELECT user_id FROM administrators WHERE user_id = $1", user_id)
+    await conn.close()
+    return is_admin is not None
+
+
 # Функції для роботи з базою даних
 async def register_user(user_id, username):
     conn = await asyncpg.connect(DATABASE_URL)
@@ -183,6 +191,11 @@ async def handle_buy_item(message: Message):
         await update_user_balance(user_id, -cost)
         await message.answer(f"✅ Ви придбали {message.text}!")
         await log_action("buy", user_id, f"Purchased {message.text}")
+
+#Повертає користувача в головне меню
+@dp.message(lambda message: message.text == "🔙 Назад")
+async def handle_back(message: Message):
+    await message.answer("🔙 Ви повернулись до головного меню.", reply_markup=main_keyboard)
 
 @dp.message(Command("adjust"))
 async def handle_adjust_command(message: Message):
